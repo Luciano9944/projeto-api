@@ -1,0 +1,27 @@
+# Variáveis e segredos
+.env
+.env.*
+!.env.example
+
+# Dependências
+node_modules/
+frontend/node_modules/
+
+# Cache Python
+__pycache__/
+*.py[cod]
+
+# Build do frontend
+frontend/dist/
+
+# Banco de dados e sessões locais
+database/*.db
+database/*.db-*
+
+# Logs
+*.log
+npm-debug.log*
+
+# Arquivos do sistema
+.DS_Store
+Thumbs.db

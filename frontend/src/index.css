@@ -1,0 +1,87 @@
+
+.catalogo {
+    width: min(1200px, 95%);
+    margin: 0 auto;
+    padding: 20px 0;
+}
+
+.catalogo-menu,
+.formulario-busca,
+.paginacao {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.catalogo-menu button,
+.formulario-busca button,
+.paginacao button {
+    padding: 10px 16px;
+    cursor: pointer;
+}
+
+.catalogo-menu .ativo {
+    background: #e62429;
+    color: white;
+    border: none;
+}
+
+.formulario-busca input {
+    width: min(450px, 65%);
+    padding: 10px;
+}
+
+.grade-filmes {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 22px;
+}
+
+.cartao-filme {
+    overflow: hidden;
+    border-radius: 8px;
+    background: #222;
+    color: white;
+}
+
+.cartao-filme img,
+.poster-indisponivel {
+    display: block;
+    width: 100%;
+    aspect-ratio: 2 / 3;
+    object-fit: cover;
+}
+
+.poster-indisponivel {
+    display: grid;
+    place-items: center;
+    padding: 10px;
+    box-sizing: border-box;
+    background: #444;
+    text-align: center;
+}
+
+.informacoes-filme {
+    padding: 12px;
+}
+
+.informacoes-filme h3 {
+    margin-top: 0;
+    font-size: 1rem;
+}
+
+.paginacao {
+    margin-top: 28px;
+}
+
+.paginacao button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.erro {
+    color: #e62429;
+    text-align: center;
+}
