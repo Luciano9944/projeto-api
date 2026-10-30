@@ -7,11 +7,13 @@ import {
     listarMarvel
 } from '../services/filmeService';
 
+import DetalhesFilme from '../components/DetalhesFilme';
+
 const IMAGEM_BASE = 'https://image.tmdb.org/t/p/w500';
 
-function Filmes() {
+function Filmes({ categoriaInicial = 'populares' }) {
     const [filmes, setFilmes] = useState([]);
-    const [categoria, setCategoria] = useState('populares');
+    const [categoria, setCategoria] = useState(categoriaInicial);
     const [pesquisa, setPesquisa] = useState('');
     const [consultaAtiva, setConsultaAtiva] = useState('');
     const [pagina, setPagina] = useState(1);
@@ -19,6 +21,7 @@ function Filmes() {
 
     const [carregando, setCarregando] = useState(false);
     const [erro, setErro] = useState('');
+    const [filmeSelecionado, setFilmeSelecionado] = useState(null);
 
     useEffect(() => {
         async function carregarFilmes() {
@@ -64,32 +67,17 @@ function Filmes() {
         setCategoria('busca');
     }
 
-    function mudarCategoria(novaCategoria) {
-        setCategoria(novaCategoria);
-        setPagina(1);
-        setPesquisa('');
-        setConsultaAtiva('');
-        setErro('');
+    if (filmeSelecionado !== null) {
+        return (
+            <DetalhesFilme
+                id={filmeSelecionado}
+                onVoltar={() => setFilmeSelecionado(null)}
+            />
+        );
     }
 
     return (
         <section className="catalogo">
-            <nav className="catalogo-menu">
-                <button
-                    className={categoria === 'populares' ? 'ativo' : ''}
-                    onClick={() => mudarCategoria('populares')}
-                >
-                    Populares
-                </button>
-
-                <button
-                    className={categoria === 'marvel' ? 'ativo' : ''}
-                    onClick={() => mudarCategoria('marvel')}
-                >
-                    Marvel
-                </button>
-            </nav>
-
             <form className="formulario-busca" onSubmit={pesquisar}>
                 <input
                     type="text"
@@ -121,19 +109,38 @@ function Filmes() {
                 {filmes.map((filme) => (
                     <article className="cartao-filme" key={filme.id}>
                         {filme.poster_path ? (
-                            <img
-                                src={`${IMAGEM_BASE}${filme.poster_path}`}
-                                alt={`Pôster de ${filme.title}`}
-                                loading="lazy"
-                            />
+                            <button
+                                type="button"
+                                className="filme-clicavel"
+                                onClick={() => setFilmeSelecionado(filme.id)}
+                                aria-label={`Ver detalhes de ${filme.title}`}
+                            >
+                                <img
+                                    src={`${IMAGEM_BASE}${filme.poster_path}`}
+                                    alt={`Pôster de ${filme.title}`}
+                                    loading="lazy"
+                                />
+                            </button>
                         ) : (
-                            <div className="poster-indisponivel">
+                            <button
+                                type="button"
+                                className="filme-clicavel poster-indisponivel"
+                                onClick={() => setFilmeSelecionado(filme.id)}
+                            >
                                 Pôster indisponível
-                            </div>
+                            </button>
                         )}
 
                         <div className="informacoes-filme">
-                            <h3>{filme.title}</h3>
+                            <h3>
+                                <button
+                                    type="button"
+                                    className="filme-titulo-clicavel"
+                                    onClick={() => setFilmeSelecionado(filme.id)}
+                                >
+                                    {filme.title}
+                                </button>
+                            </h3>
 
                             <p>
                                 Ano: {filme.release_date
@@ -142,7 +149,7 @@ function Filmes() {
                             </p>
 
                             <p>
-                                ⭐ {Number(filme.vote_average || 0).toFixed(1)}
+                                Nota: {Number(filme.vote_average || 0).toFixed(1)}
                             </p>
                         </div>
                     </article>

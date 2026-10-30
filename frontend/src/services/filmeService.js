@@ -1,12 +1,41 @@
-
 const API_URL = 'http://localhost:3000/api/filmes';
 
 async function requisitar(url) {
-    const resposta = await fetch(url);
-    const dados = await resposta.json();
+    let resposta;
+
+    try {
+        resposta = await fetch(url);
+    } catch {
+        throw new Error(
+            'Não foi possível conectar ao servidor da API.'
+        );
+    }
+
+    const texto = await resposta.text();
+    let dados = null;
+
+    if (texto.trim()) {
+        try {
+            dados = JSON.parse(texto);
+        } catch {
+            throw new Error(
+                `A API retornou uma resposta inválida (HTTP ${resposta.status}).`
+            );
+        }
+    }
 
     if (!resposta.ok) {
-        throw new Error(dados.erro || 'Erro ao consultar o catálogo');
+        throw new Error(
+            dados?.erro ||
+            dados?.mensagem ||
+            `Erro ao consultar a API (HTTP ${resposta.status}).`
+        );
+    }
+
+    if (dados === null) {
+        throw new Error(
+            'A API retornou uma resposta vazia.'
+        );
     }
 
     return dados;

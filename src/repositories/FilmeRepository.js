@@ -1,4 +1,3 @@
-
 const tmdb = require('../config/tmdb');
 
 const CACHE_TTL = 30 * 60 * 1000;
@@ -20,6 +19,36 @@ const idsIgnoradosMarvel = new Set([
     200505, // Draft Day
     246355  // Saw (Jogos Mortais)
 ]);
+
+// Executa as consultas em lotes para limitar a concorrência.
+async function executarEmLotes(itens, tamanhoLote, operacao) {
+    const resultados = [];
+
+    for (let i = 0; i < itens.length; i += tamanhoLote) {
+        const lote = itens.slice(i, i + tamanhoLote);
+
+        const resultadosLote = await Promise.allSettled(
+            lote.map(operacao)
+        );
+
+        resultados.push(...resultadosLote);
+    }
+
+    return resultados;
+}
+
+// Interrompe o carregamento quando ocorre uma falha temporária
+// que pode comprometer a lista consolidada.
+function verificarFalhasTemporarias(resultados) {
+    const falha = resultados.find(resultado =>
+        resultado.status === 'rejected' &&
+        [502, 503, 504].includes(resultado.reason?.status)
+    );
+
+    if (falha) {
+        throw falha.reason;
+    }
+}
 
 async function listarPopulares(pagina = 1) {
     return tmdb.requisitar(
@@ -58,17 +87,24 @@ async function carregarFilmesMarvel() {
         filmesUnicos.set(filme.id, filme);
     }
 
-    // 2. Busca as páginas restantes em paralelo.
-    const resultadosPaginas = await Promise.allSettled(
-        Array.from({ length: totalPaginas - 1 }, (_, i) =>
-            tmdb.requisitar(
-                `/discover/movie?with_companies=420&sort_by=popularity.desc&language=pt-BR&page=${i + 2}`
-            )
-        )
+    // 2. Busca as páginas restantes, com no máximo 3 consultas simultâneas.
+    const paginas = Array.from(
+        { length: totalPaginas - 1 },
+        (_, i) => i + 2
     );
 
+    const resultadosPaginas = await executarEmLotes(
+        paginas,
+        3,
+        pagina =>
+            tmdb.requisitar(
+                `/discover/movie?with_companies=420&sort_by=popularity.desc&language=pt-BR&page=${pagina}`
+            )
+    );
+
+    verificarFalhasTemporarias(resultadosPaginas);
+
     for (const resultado of resultadosPaginas) {
-        // Uma falha não interrompe o processamento das outras páginas.
         if (resultado.status !== 'fulfilled') {
             continue;
         }
@@ -78,7 +114,7 @@ async function carregarFilmesMarvel() {
         }
     }
 
-    // 3. IDs conhecidos de adaptações Marvel de diferentes produtoras.
+    // 3. IDs conhecidos de filmes Marvel de diferentes produtoras.
     const idsFilmesConhecidos = [
         // Homem-Aranha — Tobey Maguire
         557, 558, 559,
@@ -116,12 +152,14 @@ async function carregarFilmesMarvel() {
         200505, 246355, 14609, 14611, 16236, 14612
     ];
 
-    // 4. Busca os detalhes dos filmes conhecidos.
-    const detalhesFilmes = await Promise.allSettled(
-        idsFilmesConhecidos.map(id =>
-            tmdb.requisitar(`/movie/${id}?language=pt-BR`)
-        )
+    // 4. Busca os detalhes em lotes de 5 filmes.
+    const detalhesFilmes = await executarEmLotes(
+        idsFilmesConhecidos,
+        5,
+        id => tmdb.requisitar(`/movie/${id}?language=pt-BR`)
     );
+
+    verificarFalhasTemporarias(detalhesFilmes);
 
     for (const resultado of detalhesFilmes) {
         if (resultado.status !== 'fulfilled') {
@@ -159,10 +197,8 @@ async function listarMarvel(pagina = 1) {
     let filmes;
 
     if (cacheValido) {
-        // Reutiliza os filmes já carregados.
         filmes = cacheMarvel.filmes;
     } else {
-        // Só inicia uma carga se não existir outra em andamento.
         if (!carregamentoMarvel) {
             carregamentoMarvel = carregarFilmesMarvel()
                 .then(filmesCarregados => {
@@ -173,16 +209,27 @@ async function listarMarvel(pagina = 1) {
 
                     return filmesCarregados;
                 })
+                .catch(erro => {
+                    if (cacheMarvel.filmes !== null) {
+                        console.warn(
+                            'Falha ao atualizar o cache da Marvel. ' +
+                            'Utilizando a última lista disponível:',
+                            erro.message
+                        );
+
+                        return cacheMarvel.filmes;
+                    }
+
+                    throw erro;
+                })
                 .finally(() => {
                     carregamentoMarvel = null;
                 });
         }
 
-        // Requisições simultâneas aguardam a mesma carga.
         filmes = await carregamentoMarvel;
     }
 
-    // 6. Pagina a lista consolidada.
     const porPagina = 20;
     const inicio = (pagina - 1) * porPagina;
 
@@ -206,11 +253,16 @@ async function buscarPalavrasChaveMarvel(termo = 'Marvel', pagina = 1) {
     );
 }
 
+async function buscarCreditos(id) {
+    return tmdb.requisitar(`/movie/${id}/credits`);
+}
+
 module.exports = {
     listarPopulares,
     buscarPorNome,
     buscarPorId,
     listarMarvel,
     buscarEmpresasMarvel,
-    buscarPalavrasChaveMarvel
+    buscarPalavrasChaveMarvel,
+    buscarCreditos
 };

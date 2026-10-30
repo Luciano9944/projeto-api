@@ -5,7 +5,7 @@
     padding: 20px 0;
 }
 
-.catalogo-menu,
+.navegacao-catalogo,
 .formulario-busca,
 .paginacao {
     display: flex;
@@ -15,14 +15,19 @@
     margin-bottom: 24px;
 }
 
-.catalogo-menu button,
+.navegacao-catalogo {
+    flex-wrap: wrap;
+    padding: 0 12px;
+}
+
+.navegacao-catalogo button,
 .formulario-busca button,
 .paginacao button {
     padding: 10px 16px;
     cursor: pointer;
 }
 
-.catalogo-menu .ativo {
+.navegacao-catalogo .ativo {
     background: #e62429;
     color: white;
     border: none;
@@ -84,4 +89,81 @@
 .erro {
     color: #e62429;
     text-align: center;
+}
+
+.filme-clicavel {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+}
+
+.filme-clicavel img {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.filme-clicavel:hover img {
+    opacity: 0.85;
+}
+
+.filme-titulo-clicavel {
+    padding: 0;
+    border: none;
+    background: none;
+    color: inherit;
+    font: inherit;
+    font-weight: bold;
+    text-align: left;
+    cursor: pointer;
+}
+
+.filme-titulo-clicavel:hover {
+    text-decoration: underline;
+}
+
+.detalhes-conteudo {
+    display: flex;
+    gap: 24px;
+    margin-top: 20px;
+}
+
+.detalhes-poster {
+    width: 280px;
+    max-width: 40%;
+    height: fit-content;
+    object-fit: contain;
+    border-radius: 8px;
+}
+
+.detalhes-informacoes {
+    flex: 1;
+    min-width: 0;
+}
+
+@media (max-width: 600px) {
+    .navegacao-catalogo {
+        gap: 8px;
+    }
+
+    .navegacao-catalogo button {
+        padding: 8px 10px;
+    }
+
+    .grade-filmes {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .detalhes-conteudo {
+        flex-direction: column;
+    }
+
+    .detalhes-poster {
+        width: 200px;
+        max-width: 100%;
+    }
 }

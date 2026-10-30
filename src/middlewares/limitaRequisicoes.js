@@ -3,7 +3,7 @@ const { rateLimit } = require('express-rate-limit');
 
 const limiteGeral = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutos
-    limit: 50, // Até 100 requisições por IP
+    limit: 100, // Até 100 requisições por IP
     standardHeaders: 'draft-8',
     legacyHeaders: false,
 

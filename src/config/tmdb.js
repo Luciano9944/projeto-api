@@ -11,18 +11,18 @@ function criarErro(mensagem, status = 502) {
 function validarResposta(dados, endpoint) {
     const caminho = endpoint.split('?')[0];
 
-    // Endpoints que devem retornar uma lista em "results".
     const endpointsDeLista = [
         '/movie/popular',
         '/search/movie',
+        '/search/tv',
         '/search/company',
         '/search/keyword',
-        '/discover/movie'
+        '/discover/movie',
+        '/discover/tv',
+        '/tv/popular'
     ];
 
-    const ehLista = endpointsDeLista.includes(caminho);
-
-    if (ehLista) {
+    if (endpointsDeLista.includes(caminho)) {
         if (
             !dados ||
             typeof dados !== 'object' ||
@@ -36,7 +36,7 @@ function validarResposta(dados, endpoint) {
         return dados;
     }
 
-    // Detalhes de um filme devem conter ID e título.
+    // Detalhes de um filme
     if (/^\/movie\/\d+$/.test(caminho)) {
         if (
             !dados ||
@@ -54,7 +54,44 @@ function validarResposta(dados, endpoint) {
         return dados;
     }
 
-    // Validação genérica para outros endpoints.
+    // Detalhes de uma série
+    if (/^\/tv\/\d+$/.test(caminho)) {
+        if (
+            !dados ||
+            typeof dados !== 'object' ||
+            Array.isArray(dados) ||
+            !Number.isInteger(dados.id) ||
+            typeof dados.name !== 'string' ||
+            !dados.name.trim()
+        ) {
+            throw criarErro(
+                'O TMDB retornou detalhes de série em formato inválido'
+            );
+        }
+
+        return dados;
+    }
+
+    // Detalhes de um episódio
+    if (/^\/tv\/\d+\/season\/\d+\/episode\/\d+$/.test(caminho)) {
+        if (
+            !dados ||
+            typeof dados !== 'object' ||
+            Array.isArray(dados) ||
+            !Number.isInteger(dados.id) ||
+            typeof dados.name !== 'string' ||
+            !dados.name.trim() ||
+            !Number.isInteger(dados.episode_number)
+        ) {
+            throw criarErro(
+                'O TMDB retornou detalhes de episódio em formato inválido'
+            );
+        }
+
+        return dados;
+    }
+
+    // Validação genérica para outros endpoints
     if (
         !dados ||
         typeof dados !== 'object' ||
@@ -116,7 +153,7 @@ async function requisitar(endpoint) {
 
             case 404:
                 mensagem =
-                    'Filme ou recurso não encontrado no TMDB';
+                    'Filme, série ou recurso não encontrado no TMDB';
                 status = 404;
                 break;
 
@@ -128,7 +165,8 @@ async function requisitar(endpoint) {
 
             default:
                 if (resposta.status >= 500) {
-                    mensagem = 'O serviço do TMDB está indisponível';
+                    mensagem =
+                        'O serviço do TMDB está indisponível';
                 } else {
                     mensagem =
                         'Não foi possível concluir a consulta ao TMDB';

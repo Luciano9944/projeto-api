@@ -132,11 +132,46 @@ async function buscarPalavrasChaveMarvel(termo, pagina) {
     );
 }
 
+async function buscarElenco(id) {
+    const creditos = await repository.buscarCreditos(
+        validarId(id)
+    );
+
+    return {
+        filme_id: creditos.id,
+        elenco: (creditos.cast || []).map(ator => ({
+            id: ator.id,
+            nome: ator.name,
+            personagem: ator.character,
+            foto: ator.profile_path
+        }))
+    };
+}
+
+async function buscarEquipe(id) {
+    const creditos = await repository.buscarCreditos(
+        validarId(id)
+    );
+
+    return {
+        filme_id: creditos.id,
+        equipe: (creditos.crew || []).map(profissional => ({
+            id: profissional.id,
+            nome: profissional.name,
+            departamento: profissional.department,
+            funcao: profissional.job,
+            foto: profissional.profile_path
+        }))
+    };
+}
+
 module.exports = {
     listarPopulares,
     buscarPorNome,
     listarMarvel,
     buscarPorId,
     buscarEmpresasMarvel,
-    buscarPalavrasChaveMarvel
+    buscarPalavrasChaveMarvel,
+    buscarElenco,
+    buscarEquipe
 };

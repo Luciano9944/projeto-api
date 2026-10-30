@@ -45,11 +45,23 @@ const buscarPalavrasChaveMarvel = criarController(
     )
 );
 
+// Novo: consultar elenco de um filme
+const buscarElenco = criarController(
+    req => service.buscarElenco(req.params.id)
+);
+
+// Novo: consultar equipe técnica de um filme
+const buscarEquipe = criarController(
+    req => service.buscarEquipe(req.params.id)
+);
+
 module.exports = {
     listarPopulares,
     buscarPorNome,
     listarMarvel,
     buscarPorId,
     buscarEmpresasMarvel,
-    buscarPalavrasChaveMarvel
+    buscarPalavrasChaveMarvel,
+    buscarElenco,
+    buscarEquipe
 };

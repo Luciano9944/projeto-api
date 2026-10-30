@@ -9,6 +9,19 @@ router.get('/filmes/buscar', controller.buscarPorNome);
 router.get('/filmes/marvel', controller.listarMarvel);
 router.get('/filmes/empresas-marvel', controller.buscarEmpresasMarvel);
 router.get('/filmes/palavras-chave-marvel',controller.buscarPalavrasChaveMarvel);
+
+router.get(
+    '/filmes/:id/elenco',
+    controller.buscarElenco
+);
+
+router.get(
+    '/filmes/:id/equipe',
+    controller.buscarEquipe
+);
+
 router.get('/filmes/:id', controller.buscarPorId);
+router.get('/filmes/:id/elenco', controller.buscarElenco);
+router.get('/filmes/:id/equipe', controller.buscarEquipe);
 
 module.exports = router;

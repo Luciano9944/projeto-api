@@ -10,6 +10,7 @@ const path = require('path');
 const { inicializarBanco } = require('./config/database');
 
 const filmeRoutes = require('./routes/filmeRoutes');
+const serieRoutes = require('./routes/serieRoutes');
 const authRoutes = require('./routes/authRoutes');
 const { limiteGeral } = require('./middlewares/limitaRequisicoes');
 const helmet = require('helmet');
@@ -36,6 +37,11 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
 // Limita as requisições recebidas pela API.
+app.use('/api', (req, res, next) => {
+    console.log(`[API] ${req.method} ${req.originalUrl}`);
+    next();
+});
+
 app.use('/api', limiteGeral);
 
 app.use(session({
@@ -51,6 +57,7 @@ app.use(session({
 
 app.use(authRoutes);
 app.use('/api', filmeRoutes);
+app.use('/api', serieRoutes);
 
 app.use(rotaNaoEncontrada);
 app.use(trataErro);
