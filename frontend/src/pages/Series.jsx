@@ -9,7 +9,8 @@ import {
     buscarTemporada,
     buscarEpisodio,
     buscarElenco,
-    buscarEquipe
+    buscarEquipe,
+    listarSeriesCatalogo
 } from '../services/serieService';
 
 const IMAGENS = 'https://image.tmdb.org/t/p/w500';
@@ -23,6 +24,10 @@ export default function Series({ categoriaInicial = 'populares' }) {
     const [totalPaginas, setTotalPaginas] = useState(1);
 
     const [serie, setSerie] = useState(null);
+    const [midiasSerie, setMidiasSerie] = useState([]);
+    const [midiaSelecionada, setMidiaSelecionada] = useState(null);
+    const [origemCatalogo, setOrigemCatalogo] = useState(false);
+
     const [temporada, setTemporada] = useState('1');
     const [dadosTemporada, setDadosTemporada] = useState(null);
     const [episodio, setEpisodio] = useState('1');
@@ -50,16 +55,37 @@ export default function Series({ categoriaInicial = 'populares' }) {
                         consultaAtiva,
                         pagina
                     );
+                } else if (categoria === 'catalogo') {
+                    resposta = await listarSeriesCatalogo();
                 } else {
                     resposta = await listarPopulares(pagina);
                 }
 
                 if (cancelado) return;
 
-                setSeries(resposta.results || []);
-                setTotalPaginas(
-                    Math.min(resposta.total_pages || 1, 500)
-                );
+                if (categoria === 'catalogo') {
+                    const seriesCatalogo = resposta
+                        .filter(item =>
+                            Array.isArray(item.midias) &&
+                            item.midias.length > 0
+                        )
+                        .map(item => ({
+                            ...item,
+                            conteudoId: item.id,
+                            id: item.tmdb_id,
+                            name: item.titulo,
+                            first_air_date: item.data_lancamento,
+                            vote_average: item.nota_media
+                        }));
+
+                    setSeries(seriesCatalogo);
+                    setTotalPaginas(1);
+                } else {
+                    setSeries(resposta.results || []);
+                    setTotalPaginas(
+                        Math.min(resposta.total_pages || 1, 500)
+                    );
+                }
             } catch (error) {
                 if (cancelado) return;
 
@@ -80,7 +106,7 @@ export default function Series({ categoriaInicial = 'populares' }) {
         };
     }, [categoria, pagina, consultaAtiva]);
 
-    async function pesquisar(event) {
+    function pesquisar(event) {
         event.preventDefault();
 
         const termo = consulta.trim();
@@ -95,7 +121,19 @@ export default function Series({ categoriaInicial = 'populares' }) {
         setCategoria('busca');
     }
 
-    async function abrirSerie(id) {
+    function mudarCategoria(novaCategoria) {
+        setCategoria(novaCategoria);
+        setPagina(1);
+        setSerie(null);
+        setMidiasSerie([]);
+        setMidiaSelecionada(null);
+        setOrigemCatalogo(false);
+        setErro('');
+    }
+
+    async function abrirSerie(item) {
+        const veioDoCatalogo = categoria === 'catalogo';
+
         setCarregando(true);
         setErro('');
         setDadosTemporada(null);
@@ -104,12 +142,18 @@ export default function Series({ categoriaInicial = 'populares' }) {
         setEquipe(null);
         setTemporada('1');
         setEpisodio('1');
+        setMidiaSelecionada(null);
+        setOrigemCatalogo(veioDoCatalogo);
+
+        // Guarda as mídias recebidas do catálogo interno.
+        setMidiasSerie(veioDoCatalogo ? item.midias || [] : []);
 
         try {
-            const resultado = await buscarPorId(id);
+            const resultado = await buscarPorId(item.id);
             setSerie(resultado);
         } catch (error) {
             setErro(error.message);
+            setMidiasSerie([]);
         } finally {
             setCarregando(false);
         }
@@ -185,6 +229,26 @@ export default function Series({ categoriaInicial = 'populares' }) {
         }
     }
 
+    // Agrupa as mídias cadastradas por temporada.
+    const midiasPorTemporada = midiasSerie.reduce((grupos, midia) => {
+        const numeroTemporada = midia.temporada;
+
+        if (numeroTemporada === null || numeroTemporada === undefined) {
+            return grupos;
+        }
+
+        if (!grupos[numeroTemporada]) {
+            grupos[numeroTemporada] = [];
+        }
+
+        grupos[numeroTemporada].push(midia);
+
+        return grupos;
+    }, {});
+
+    const temporadasCadastradas = Object.keys(midiasPorTemporada)
+        .sort((a, b) => Number(a) - Number(b));
+
     const nomeSerie = serie?.nome || serie?.name || serie?.original_name;
     const sinopse = serie?.sinopse || serie?.overview;
     const numeroTemporadas =
@@ -194,6 +258,32 @@ export default function Series({ categoriaInicial = 'populares' }) {
         <section className="catalogo">
             {!serie && (
                 <>
+                    <nav className="categorias-series">
+                        <button
+                            type="button"
+                            className={categoria === 'populares' ? 'ativo' : ''}
+                            onClick={() => mudarCategoria('populares')}
+                        >
+                            Séries populares
+                        </button>
+
+                        <button
+                            type="button"
+                            className={categoria === 'marvel' ? 'ativo' : ''}
+                            onClick={() => mudarCategoria('marvel')}
+                        >
+                            Séries Marvel
+                        </button>
+
+                        <button
+                            type="button"
+                            className={categoria === 'catalogo' ? 'ativo' : ''}
+                            onClick={() => mudarCategoria('catalogo')}
+                        >
+                            Disponíveis no site
+                        </button>
+                    </nav>
+
                     <form className="formulario-busca" onSubmit={pesquisar}>
                         <input
                             type="text"
@@ -207,10 +297,12 @@ export default function Series({ categoriaInicial = 'populares' }) {
 
                     <h2>
                         {categoria === 'marvel'
-                            ? 'Séries da Marvel'
+                            ? 'Séries Marvel'
                             : categoria === 'busca'
                                 ? `Resultados para "${consultaAtiva}"`
-                                : 'Séries populares'}
+                                : categoria === 'catalogo'
+                                    ? 'Disponíveis no site'
+                                    : 'Séries populares'}
                     </h2>
 
                     {erro && <p className="erro">Erro: {erro}</p>}
@@ -227,7 +319,7 @@ export default function Series({ categoriaInicial = 'populares' }) {
                                     <button
                                         type="button"
                                         className="filme-clicavel"
-                                        onClick={() => abrirSerie(item.id)}
+                                        onClick={() => abrirSerie(item)}
                                         aria-label={`Ver detalhes de ${item.name || item.original_name}`}
                                     >
                                         <img
@@ -240,7 +332,7 @@ export default function Series({ categoriaInicial = 'populares' }) {
                                     <button
                                         type="button"
                                         className="filme-clicavel poster-indisponivel"
-                                        onClick={() => abrirSerie(item.id)}
+                                        onClick={() => abrirSerie(item)}
                                     >
                                         Pôster indisponível
                                     </button>
@@ -251,7 +343,7 @@ export default function Series({ categoriaInicial = 'populares' }) {
                                         <button
                                             type="button"
                                             className="filme-titulo-clicavel"
-                                            onClick={() => abrirSerie(item.id)}
+                                            onClick={() => abrirSerie(item)}
                                         >
                                             {item.name || item.original_name}
                                         </button>
@@ -271,27 +363,29 @@ export default function Series({ categoriaInicial = 'populares' }) {
                         ))}
                     </div>
 
-                    {!carregando && series.length > 0 && (
-                        <div className="paginacao">
-                            <button
-                                onClick={() => setPagina((atual) => atual - 1)}
-                                disabled={pagina <= 1}
-                            >
-                                Anterior
-                            </button>
+                    {categoria !== 'catalogo' &&
+                        !carregando &&
+                        series.length > 0 && (
+                            <div className="paginacao">
+                                <button
+                                    onClick={() => setPagina((atual) => atual - 1)}
+                                    disabled={pagina <= 1}
+                                >
+                                    Anterior
+                                </button>
 
-                            <span>
-                                Página {pagina} de {totalPaginas}
-                            </span>
+                                <span>
+                                    Página {pagina} de {totalPaginas}
+                                </span>
 
-                            <button
-                                onClick={() => setPagina((atual) => atual + 1)}
-                                disabled={pagina >= totalPaginas}
-                            >
-                                Próxima
-                            </button>
-                        </div>
-                    )}
+                                <button
+                                    onClick={() => setPagina((atual) => atual + 1)}
+                                    disabled={pagina >= totalPaginas}
+                                >
+                                    Próxima
+                                </button>
+                            </div>
+                        )}
                 </>
             )}
 
@@ -300,6 +394,9 @@ export default function Series({ categoriaInicial = 'populares' }) {
                     <button
                         onClick={() => {
                             setSerie(null);
+                            setMidiasSerie([]);
+                            setMidiaSelecionada(null);
+                            setOrigemCatalogo(false);
                             setDadosTemporada(null);
                             setDadosEpisodio(null);
                             setElenco(null);
@@ -344,129 +441,196 @@ export default function Series({ categoriaInicial = 'populares' }) {
                         Situação: {serie.situacao || serie.status || 'Não informada'}
                     </p>
 
-                    <h3>Temporadas e episódios</h3>
+                    {origemCatalogo ? (
+                        <>
+                            <h3>Episódios disponíveis no site</h3>
 
-                    <label>
-                        Temporada:{' '}
-                        <select
-                            value={temporada}
-                            onChange={(event) => {
-                                setTemporada(event.target.value);
-                                setDadosTemporada(null);
-                                setDadosEpisodio(null);
-                            }}
-                        >
-                            {Array.from(
-                                { length: numeroTemporadas + 1 },
-                                (_, index) => index
-                            ).map((numero) => (
-                                <option key={numero} value={numero}>
-                                    {numero === 0
-                                        ? 'Especial (0)'
-                                        : `Temporada ${numero}`}
-                                </option>
-                            ))}
-                        </select>
-                    </label>
+                            {temporadasCadastradas.length > 0 ? (
+                                temporadasCadastradas.map(numeroTemporada => (
+                                    <div
+                                        className="temporada-catalogo"
+                                        key={numeroTemporada}
+                                    >
+                                        <h4>
+                                            {Number(numeroTemporada) === 0
+                                                ? 'Especiais'
+                                                : `Temporada ${numeroTemporada}`}
+                                        </h4>
 
-                    <button onClick={carregarTemporada} disabled={carregando}>
-                        Consultar temporada
-                    </button>
+                                        {midiasPorTemporada[numeroTemporada].map(midia => (
+                                            <article
+                                                className="midia-serie"
+                                                key={midia.id}
+                                            >
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setMidiaSelecionada(midia)}
+                                                >
+                                                    Episódio {midia.episodio}: {midia.titulo}
+                                                </button>
 
-                    {dadosTemporada && (
-                        <div>
-                            <h4>
-                                {dadosTemporada.name || `Temporada ${temporada}`}
-                            </h4>
+                                                {midia.descricao && (
+                                                    <p>{midia.descricao}</p>
+                                                )}
+                                            </article>
+                                        ))}
+                                    </div>
+                                ))
+                            ) : (
+                                <p>Nenhum episódio cadastrado no site para esta série.</p>
+                            )}
 
-                            <p>
-                                Episódios: {dadosTemporada.episodes?.length ?? 0}
-                            </p>
+                            {midiaSelecionada && (
+                                <div className="player-serie">
+                                    <h3>{midiaSelecionada.titulo}</h3>
 
-                            <ul>
-                                {(dadosTemporada.episodes || []).map((item) => (
-                                    <li key={item.id}>
-                                        Episódio {item.episode_number}: {item.name}
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
+                                    <iframe
+                                        src={midiaSelecionada.embed_url}
+                                        title={midiaSelecionada.titulo}
+                                        width="100%"
+                                        height="480"
+                                        allow="autoplay; encrypted-media"
+                                        allowFullScreen
+                                    />
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                        <>
+                            <h3>Temporadas e episódios no TMDB</h3>
 
-                    <label>
-                        Número do episódio:{' '}
-                        <input
-                            type="number"
-                            min="1"
-                            value={episodio}
-                            onChange={(event) => setEpisodio(event.target.value)}
-                        />
-                    </label>
+                            <label>
+                                Temporada:{' '}
+                                <select
+                                    value={temporada}
+                                    onChange={(event) => {
+                                        setTemporada(event.target.value);
+                                        setDadosTemporada(null);
+                                        setDadosEpisodio(null);
+                                    }}
+                                >
+                                    {Array.from(
+                                        { length: numeroTemporadas + 1 },
+                                        (_, index) => index
+                                    ).map((numero) => (
+                                        <option key={numero} value={numero}>
+                                            {numero === 0
+                                                ? 'Especial (0)'
+                                                : `Temporada ${numero}`}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
 
-                    <button
-                        onClick={carregarEpisodio}
-                        disabled={carregando || Number(episodio) < 1}
-                    >
-                        Consultar episódio
-                    </button>
+                            <button
+                                onClick={carregarTemporada}
+                                disabled={carregando}
+                            >
+                                Consultar temporada
+                            </button>
 
-                    {dadosEpisodio && (
-                        <div>
-                            <h4>
-                                Episódio {dadosEpisodio.episode_number}:{' '}
-                                {dadosEpisodio.name}
-                            </h4>
+                            {dadosTemporada && (
+                                <div>
+                                    <h4>
+                                        {dadosTemporada.name || `Temporada ${temporada}`}
+                                    </h4>
 
-                            <p>
-                                Exibição: {dadosEpisodio.air_date || 'Não informada'}
-                            </p>
+                                    <p>
+                                        Episódios: {dadosTemporada.episodes?.length ?? 0}
+                                    </p>
 
-                            <p>
-                                {dadosEpisodio.overview || 'Sinopse não disponível.'}
-                            </p>
-                        </div>
-                    )}
+                                    <ul>
+                                        {(dadosTemporada.episodes || []).map((item) => (
+                                            <li key={item.id}>
+                                                Episódio {item.episode_number}: {item.name}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
 
-                    <h3>Elenco e equipe</h3>
+                            <label>
+                                Número do episódio:{' '}
+                                <input
+                                    type="number"
+                                    min="1"
+                                    value={episodio}
+                                    onChange={(event) => setEpisodio(event.target.value)}
+                                />
+                            </label>
 
-                    <button onClick={carregarElenco} disabled={carregando}>
-                        Consultar elenco
-                    </button>
+                            <button
+                                onClick={carregarEpisodio}
+                                disabled={carregando || Number(episodio) < 1}
+                            >
+                                Consultar episódio
+                            </button>
 
-                    <button onClick={carregarEquipe} disabled={carregando}>
-                        Consultar equipe técnica
-                    </button>
+                            {dadosEpisodio && (
+                                <div>
+                                    <h4>
+                                        Episódio {dadosEpisodio.episode_number}:{' '}
+                                        {dadosEpisodio.name}
+                                    </h4>
 
-                    {elenco && (
-                        <div>
-                            <h4>Elenco</h4>
+                                    <p>
+                                        Exibição: {dadosEpisodio.air_date || 'Não informada'}
+                                    </p>
 
-                            <ul>
-                                {(elenco.elenco || []).map((pessoa) => (
-                                    <li key={pessoa.id}>
-                                        {pessoa.nome} — personagem:{' '}
-                                        {pessoa.personagem || 'Não informado'}
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
+                                    <p>
+                                        {dadosEpisodio.overview || 'Sinopse não disponível.'}
+                                    </p>
+                                </div>
+                            )}
 
-                    {equipe && (
-                        <div>
-                            <h4>Equipe técnica</h4>
+                            <h3>Elenco e equipe</h3>
 
-                            <ul>
-                                {(equipe.equipe || []).map((pessoa, index) => (
-                                    <li key={`${pessoa.id}-${pessoa.funcao}-${index}`}>
-                                        {pessoa.nome} — {pessoa.funcao}
-                                        {pessoa.departamento
-                                            ? ` (${pessoa.departamento})`
-                                            : ''}
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
+                            <button
+                                onClick={carregarElenco}
+                                disabled={carregando}
+                            >
+                                Consultar elenco
+                            </button>
+
+                            <button
+                                onClick={carregarEquipe}
+                                disabled={carregando}
+                            >
+                                Consultar equipe técnica
+                            </button>
+
+                            {elenco && (
+                                <div>
+                                    <h4>Elenco</h4>
+
+                                    <ul>
+                                        {(elenco.elenco || []).map((pessoa) => (
+                                            <li key={pessoa.id}>
+                                                {pessoa.nome} — personagem:{' '}
+                                                {pessoa.personagem || 'Não informado'}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+
+                            {equipe && (
+                                <div>
+                                    <h4>Equipe técnica</h4>
+
+                                    <ul>
+                                        {(equipe.equipe || []).map((pessoa, index) => (
+                                            <li key={`${pessoa.id}-${pessoa.funcao}-${index}`}>
+                                                {pessoa.nome} — {pessoa.funcao}
+                                                {pessoa.departamento
+                                                    ? ` (${pessoa.departamento})`
+                                                    : ''}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+                        </>
                     )}
                 </section>
             )}

@@ -3,7 +3,12 @@ import { buscarFilme } from '../services/filmeService';
 
 const IMAGEM_BASE = 'https://image.tmdb.org/t/p/w500';
 
-function DetalhesFilme({ id, onVoltar }) {
+function DetalhesFilme({
+    id,
+    midias = [],
+    origemCatalogo = false,
+    onVoltar
+}) {
     const [filme, setFilme] = useState(null);
     const [carregando, setCarregando] = useState(true);
     const [erro, setErro] = useState('');
@@ -103,6 +108,38 @@ function DetalhesFilme({ id, onVoltar }) {
                     </p>
                 </div>
             </div>
+
+            {origemCatalogo && (
+                <section className="midias-filme">
+                    <h3>Assistir filme</h3>
+
+                    {midias.length > 0 ? (
+                        midias.map(midia => (
+                            <article
+                                className="midia-filme"
+                                key={midia.id}
+                            >
+                                <h4>{midia.titulo}</h4>
+
+                                {midia.descricao && (
+                                    <p>{midia.descricao}</p>
+                                )}
+
+                                <iframe
+                                    src={midia.embed_url}
+                                    title={midia.titulo}
+                                    width="100%"
+                                    height="480"
+                                    allow="autoplay; encrypted-media"
+                                    allowFullScreen
+                                />
+                            </article>
+                        ))
+                    ) : (
+                        <p>Nenhum vídeo disponível para este filme.</p>
+                    )}
+                </section>
+            )}
         </section>
     );
 }

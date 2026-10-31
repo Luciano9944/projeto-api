@@ -82,3 +82,9 @@ export async function buscarElenco(id) {
 export async function buscarEquipe(id) {
     return requisitar(`${API_URL}/${id}/equipe`);
 }
+
+const API_CATALOGO = 'http://localhost:3000/api/catalogo';
+
+export async function listarSeriesCatalogo() {
+    return requisitar(`${API_CATALOGO}?tipo=serie`);
+}

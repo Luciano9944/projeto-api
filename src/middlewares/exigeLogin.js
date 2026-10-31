@@ -1,7 +1,8 @@
+
 function exigeLogin(req, res, next) {
-    if (!req.session.autenticado) {
+    if (!req.session || !req.session.usuario) {
         return res.status(401).json({
-            erro: 'informe um access_token válido para continuar'
+            erro: 'É necessário estar autenticado para continuar.'
         });
     }
 

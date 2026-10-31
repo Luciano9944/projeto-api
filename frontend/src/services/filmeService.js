@@ -1,4 +1,5 @@
 const API_URL = 'http://localhost:3000/api/filmes';
+const API_CATALOGO = 'http://localhost:3000/api/catalogo';
 
 async function requisitar(url) {
     let resposta;
@@ -41,10 +42,12 @@ async function requisitar(url) {
     return dados;
 }
 
+// Consulta filmes populares no TMDB.
 export async function listarPopulares(pagina = 1) {
     return requisitar(`${API_URL}/populares?page=${pagina}`);
 }
 
+// Pesquisa filmes no TMDB.
 export async function buscarFilmes(query, pagina = 1) {
     const parametros = new URLSearchParams({
         query,
@@ -54,10 +57,17 @@ export async function buscarFilmes(query, pagina = 1) {
     return requisitar(`${API_URL}/buscar?${parametros}`);
 }
 
+// Consulta filmes da Marvel no TMDB.
 export async function listarMarvel(pagina = 1) {
     return requisitar(`${API_URL}/marvel?page=${pagina}`);
 }
 
+// Busca detalhes de um filme no TMDB.
 export async function buscarFilme(id) {
     return requisitar(`${API_URL}/${id}`);
+}
+
+// Lista os filmes cadastrados no catálogo próprio.
+export async function listarFilmesCatalogo() {
+    return requisitar(`${API_CATALOGO}?tipo=filme`);
 }

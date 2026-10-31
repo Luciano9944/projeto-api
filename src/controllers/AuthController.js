@@ -1,47 +1,201 @@
-function login(req, res) {
-    const { access_token } = req.body;
 
-    if (
-        !access_token ||
-        access_token !== process.env.ACCESS_TOKEN
-    ) {
-        return res.status(401).json({
-            erro: 'access_token inválido'
-        });
-    }
+const bcrypt = require('bcryptjs');
+const { pool } = require('../config/database');
 
-    req.session.autenticado = true;
-    req.session.logadoEm = new Date().toISOString();
+// Cadastro de usuário.
+async function cadastrar(req, res, next) {
+    try {
+        const { nome, email, senha } = req.body;
 
-    res.status(200).json({
-        mensagem: 'sessão iniciada com sucesso'
-    });
-}
-
-function perfil(req, res) {
-    res.status(200).json({
-        autenticado: req.session.autenticado,
-        logadoEm: req.session.logadoEm
-    });
-}
-
-function logout(req, res) {
-    req.session.destroy((erro) => {
-        if (erro) {
-            return res.status(500).json({
-                erro: 'erro ao encerrar sessão'
+        // Validação dos campos.
+        if (
+            typeof nome !== 'string' ||
+            typeof email !== 'string' ||
+            typeof senha !== 'string'
+        ) {
+            return res.status(400).json({
+                erro: 'Informe nome, e-mail e senha válidos.'
             });
         }
 
-        res.clearCookie('connect.sid');
+        const nomeNormalizado = nome.trim();
+        const emailNormalizado = email.trim().toLowerCase();
 
-        res.status(200).json({
-            mensagem: 'sessão encerrada'
+        if (!nomeNormalizado || nomeNormalizado.length > 100) {
+            return res.status(400).json({
+                erro: 'O nome deve ter entre 1 e 100 caracteres.'
+            });
+        }
+
+        const formatoEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        if (!formatoEmail.test(emailNormalizado)) {
+            return res.status(400).json({
+                erro: 'Informe um e-mail válido.'
+            });
+        }
+
+        if (senha.length < 8) {
+            return res.status(400).json({
+                erro: 'A senha deve possuir pelo menos 8 caracteres.'
+            });
+        }
+
+        // Verifica se o e-mail já está cadastrado.
+        const usuarioExistente = await pool.query(
+            'SELECT id FROM usuarios WHERE email = $1',
+            [emailNormalizado]
+        );
+
+        if (usuarioExistente.rowCount > 0) {
+            return res.status(409).json({
+                erro: 'Este e-mail já está cadastrado.'
+            });
+        }
+
+        // Protege a senha utilizando bcrypt.
+        const senhaHash = await bcrypt.hash(senha, 12);
+
+        // Cria sempre um usuário comum.
+        const resultado = await pool.query(
+            `INSERT INTO usuarios (nome, email, senha_hash, papel)
+             VALUES ($1, $2, $3, 'usuario')
+             RETURNING id, nome, email, papel, criado_em`,
+            [nomeNormalizado, emailNormalizado, senhaHash]
+        );
+
+        return res.status(201).json({
+            mensagem: 'Usuário cadastrado com sucesso.',
+            usuario: resultado.rows[0]
+        });
+
+    } catch (erro) {
+        // Protege contra tentativas simultâneas com o mesmo e-mail.
+        if (erro.code === '23505') {
+            return res.status(409).json({
+                erro: 'Este e-mail já está cadastrado.'
+            });
+        }
+
+        next(erro);
+    }
+}
+
+
+// Login de usuário.
+async function login(req, res, next) {
+    try {
+        const { email, senha } = req.body;
+
+        if (
+            typeof email !== 'string' ||
+            typeof senha !== 'string' ||
+            !email.trim() ||
+            !senha
+        ) {
+            return res.status(400).json({
+                erro: 'Informe e-mail e senha.'
+            });
+        }
+
+        const emailNormalizado = email.trim().toLowerCase();
+
+        const resultado = await pool.query(
+            `SELECT id, nome, email, senha_hash, papel, ativo
+             FROM usuarios
+             WHERE email = $1`,
+            [emailNormalizado]
+        );
+
+        if (resultado.rowCount === 0) {
+            return res.status(401).json({
+                erro: 'E-mail ou senha incorretos.'
+            });
+        }
+
+        const usuario = resultado.rows[0];
+
+        if (!usuario.ativo) {
+            return res.status(403).json({
+                erro: 'Esta conta está desativada.'
+            });
+        }
+
+        // Compara a senha informada com o hash armazenado.
+        const senhaCorreta = await bcrypt.compare(
+            senha,
+            usuario.senha_hash
+        );
+
+        if (!senhaCorreta) {
+            return res.status(401).json({
+                erro: 'E-mail ou senha incorretos.'
+            });
+        }
+
+        // Evita reutilização da sessão anterior.
+        await new Promise((resolve, reject) => {
+            req.session.regenerate((erro) => {
+                if (erro) {
+                    return reject(erro);
+                }
+
+                resolve();
+            });
+        });
+
+        // Armazena os dados necessários na sessão.
+        req.session.usuario = {
+            id: usuario.id,
+            nome: usuario.nome,
+            email: usuario.email,
+            papel: usuario.papel
+        };
+
+        return res.status(200).json({
+            mensagem: 'Login realizado com sucesso.',
+            usuario: req.session.usuario
+        });
+
+    } catch (erro) {
+        next(erro);
+    }
+}
+
+
+// Consulta o perfil do usuário autenticado.
+function perfil(req, res) {
+    return res.status(200).json({
+        autenticado: true,
+        usuario: req.session.usuario
+    });
+}
+
+
+// Encerra a sessão.
+function logout(req, res, next) {
+    req.session.destroy((erro) => {
+        if (erro) {
+            return next(erro);
+        }
+
+        res.clearCookie('cinecatalog.sid', {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production'
+                ? 'none'
+                : 'lax'
+        });
+
+        return res.status(200).json({
+            mensagem: 'Sessão encerrada com sucesso.'
         });
     });
 }
 
+
 module.exports = {
+    cadastrar,
     login,
     perfil,
     logout

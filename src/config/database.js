@@ -1,30 +1,36 @@
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
 
-const caminhoBanco = path.join(__dirname, '../../database/app.db');
+const { Pool } = require('pg');
 
-// Singleton: uma única conexão com o banco
-const db = new sqlite3.Database(caminhoBanco);
+if (!process.env.DATABASE_URL_POOLED) {
+    throw new Error(
+        'A variável DATABASE_URL_POOLED não foi configurada.'
+    );
+}
 
-function inicializarBanco() {
-    return new Promise((resolve, reject) => {
-        db.run(`
-            CREATE TABLE IF NOT EXISTS filmes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                titulo TEXT NOT NULL,
-                ano INTEGER NOT NULL
-            )
-        `, (erro) => {
-            if (erro) {
-                reject(erro);
-            } else {
-                resolve();
-            }
-        });
-    });
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL_POOLED,
+    ssl: {
+        rejectUnauthorized: false
+    },
+    max: 10,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 10000
+});
+
+pool.on('error', (erro) => {
+    console.error('Erro inesperado no pool PostgreSQL:', erro);
+});
+
+async function testarConexao() {
+    const resultado = await pool.query('SELECT NOW() AS horario');
+
+    console.log(
+        'Conexão com PostgreSQL estabelecida!',
+        resultado.rows[0].horario
+    );
 }
 
 module.exports = {
-    db,
-    inicializarBanco
+    pool,
+    testarConexao
 };

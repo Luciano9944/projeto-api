@@ -1,10 +1,10 @@
-
 import { useEffect, useState } from 'react';
 
 import {
     listarPopulares,
     buscarFilmes,
-    listarMarvel
+    listarMarvel,
+    listarFilmesCatalogo
 } from '../services/filmeService';
 
 import DetalhesFilme from '../components/DetalhesFilme';
@@ -35,12 +35,35 @@ function Filmes({ categoriaInicial = 'populares' }) {
                     dados = await listarMarvel(pagina);
                 } else if (categoria === 'busca') {
                     dados = await buscarFilmes(consultaAtiva, pagina);
+                } else if (categoria === 'catalogo') {
+                    dados = await listarFilmesCatalogo();
                 } else {
                     dados = await listarPopulares(pagina);
                 }
 
-                setFilmes(dados.results || []);
-                setTotalPaginas(Math.min(dados.total_pages || 1, 500));
+                if (categoria === 'catalogo') {
+                    const filmesCatalogo = dados
+                        .filter(filme =>
+                            Array.isArray(filme.midias) &&
+                            filme.midias.length > 0
+                        )
+                        .map(filme => ({
+                            ...filme,
+                            conteudoId: filme.id,
+                            id: filme.tmdb_id,
+                            title: filme.titulo,
+                            release_date: filme.data_lancamento,
+                            vote_average: filme.nota_media
+                        }));
+
+                    setFilmes(filmesCatalogo);
+                    setTotalPaginas(1);
+                } else {
+                    setFilmes(dados.results || []);
+                    setTotalPaginas(
+                        Math.min(dados.total_pages || 1, 500)
+                    );
+                }
             } catch (erro) {
                 setErro(erro.message);
                 setFilmes([]);
@@ -67,10 +90,27 @@ function Filmes({ categoriaInicial = 'populares' }) {
         setCategoria('busca');
     }
 
+    function mudarCategoria(novaCategoria) {
+        setPagina(1);
+        setCategoria(novaCategoria);
+        setErro('');
+        setFilmeSelecionado(null);
+    }
+
+    function abrirDetalhes(filme) {
+        setFilmeSelecionado({
+            id: filme.id,
+            midias: filme.midias || [],
+            origemCatalogo: categoria === 'catalogo'
+        });
+    }
+
     if (filmeSelecionado !== null) {
         return (
             <DetalhesFilme
-                id={filmeSelecionado}
+                id={filmeSelecionado.id}
+                midias={filmeSelecionado.midias}
+                origemCatalogo={filmeSelecionado.origemCatalogo}
                 onVoltar={() => setFilmeSelecionado(null)}
             />
         );
@@ -78,6 +118,32 @@ function Filmes({ categoriaInicial = 'populares' }) {
 
     return (
         <section className="catalogo">
+            <nav className="categorias-filmes">
+                <button
+                    type="button"
+                    className={categoria === 'populares' ? 'ativo' : ''}
+                    onClick={() => mudarCategoria('populares')}
+                >
+                    Filmes populares
+                </button>
+
+                <button
+                    type="button"
+                    className={categoria === 'marvel' ? 'ativo' : ''}
+                    onClick={() => mudarCategoria('marvel')}
+                >
+                    Filmes Marvel
+                </button>
+
+                <button
+                    type="button"
+                    className={categoria === 'catalogo' ? 'ativo' : ''}
+                    onClick={() => mudarCategoria('catalogo')}
+                >
+                    Disponíveis no site
+                </button>
+            </nav>
+
             <form className="formulario-busca" onSubmit={pesquisar}>
                 <input
                     type="text"
@@ -91,15 +157,17 @@ function Filmes({ categoriaInicial = 'populares' }) {
 
             <h2>
                 {categoria === 'marvel'
-                    ? 'Filmes da Marvel'
+                    ? 'Filmes Marvel'
                     : categoria === 'busca'
                         ? `Resultados para "${consultaAtiva}"`
-                        : 'Filmes populares'}
+                        : categoria === 'catalogo'
+                            ? 'Disponíveis no site'
+                            : 'Filmes populares'}
             </h2>
 
             {carregando && <p>Carregando filmes...</p>}
 
-            {erro && <p className="erro">{erro}</p>}
+            {erro && <p className="erro">Erro: {erro}</p>}
 
             {!carregando && !erro && filmes.length === 0 && (
                 <p>Nenhum filme encontrado.</p>
@@ -112,7 +180,7 @@ function Filmes({ categoriaInicial = 'populares' }) {
                             <button
                                 type="button"
                                 className="filme-clicavel"
-                                onClick={() => setFilmeSelecionado(filme.id)}
+                                onClick={() => abrirDetalhes(filme)}
                                 aria-label={`Ver detalhes de ${filme.title}`}
                             >
                                 <img
@@ -125,7 +193,7 @@ function Filmes({ categoriaInicial = 'populares' }) {
                             <button
                                 type="button"
                                 className="filme-clicavel poster-indisponivel"
-                                onClick={() => setFilmeSelecionado(filme.id)}
+                                onClick={() => abrirDetalhes(filme)}
                             >
                                 Pôster indisponível
                             </button>
@@ -136,7 +204,7 @@ function Filmes({ categoriaInicial = 'populares' }) {
                                 <button
                                     type="button"
                                     className="filme-titulo-clicavel"
-                                    onClick={() => setFilmeSelecionado(filme.id)}
+                                    onClick={() => abrirDetalhes(filme)}
                                 >
                                     {filme.title}
                                 </button>
@@ -149,34 +217,38 @@ function Filmes({ categoriaInicial = 'populares' }) {
                             </p>
 
                             <p>
-                                Nota: {Number(filme.vote_average || 0).toFixed(1)}
+                                Nota: {Number(
+                                    filme.vote_average || 0
+                                ).toFixed(1)}
                             </p>
                         </div>
                     </article>
                 ))}
             </div>
 
-            {!carregando && filmes.length > 0 && (
-                <div className="paginacao">
-                    <button
-                        onClick={() => setPagina((atual) => atual - 1)}
-                        disabled={pagina <= 1}
-                    >
-                        Anterior
-                    </button>
+            {!carregando &&
+                filmes.length > 0 &&
+                categoria !== 'catalogo' && (
+                    <div className="paginacao">
+                        <button
+                            onClick={() => setPagina(atual => atual - 1)}
+                            disabled={pagina <= 1}
+                        >
+                            Anterior
+                        </button>
 
-                    <span>
-                        Página {pagina} de {totalPaginas}
-                    </span>
+                        <span>
+                            Página {pagina} de {totalPaginas}
+                        </span>
 
-                    <button
-                        onClick={() => setPagina((atual) => atual + 1)}
-                        disabled={pagina >= totalPaginas}
-                    >
-                        Próxima
-                    </button>
-                </div>
-            )}
+                        <button
+                            onClick={() => setPagina(atual => atual + 1)}
+                            disabled={pagina >= totalPaginas}
+                        >
+                            Próxima
+                        </button>
+                    </div>
+                )}
         </section>
     );
 }

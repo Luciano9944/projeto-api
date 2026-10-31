@@ -3,7 +3,8 @@ require('dotenv').config();
 
 const variaveisObrigatorias = [
     'SESSION_SECRET',
-    'TMDB_BEARER_TOKEN'
+    'TMDB_BEARER_TOKEN',
+    'DATABASE_URL_POOLED'
 ];
 
 const variaveisAusentes = variaveisObrigatorias.filter(
@@ -19,23 +20,25 @@ if (variaveisAusentes.length > 0) {
     process.exit(1);
 }
 
-const { app, inicializarBanco } = require('./src/app');
+const { app } = require('./src/app');
+const { testarConexao, pool } = require('./src/config/database');
 
 const PORT = process.env.PORT || 3000;
 
 async function iniciarServidor() {
     try {
-        await inicializarBanco();
+        await testarConexao();
 
         app.listen(PORT, () => {
             console.log(`Servidor rodando em http://localhost:${PORT}`);
         });
     } catch (erro) {
         console.error(
-            'Erro ao inicializar o servidor:',
+            'Erro ao conectar com PostgreSQL:',
             erro.message
         );
 
+        await pool.end();
         process.exit(1);
     }
 }
