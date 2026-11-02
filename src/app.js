@@ -6,18 +6,20 @@ const cors = require('cors');
 const session = require('express-session');
 const pgSession = require('connect-pg-simple')(session);
 const path = require('path');
+const helmet = require('helmet');
 
 const { pool } = require('./config/database');
 
 const filmeRoutes = require('./routes/filmeRoutes');
 const serieRoutes = require('./routes/serieRoutes');
 const authRoutes = require('./routes/authRoutes');
-
-const { limiteGeral } = require('./middlewares/limitaRequisicoes');
-const helmet = require('helmet');
-
 const midiaRoutes = require('./routes/midiaRoutes');
 const catalogoRoutes = require('./routes/catalogoRoutes');
+const favoritoRoutes = require('./routes/favoritoRoutes');
+const comentarioRoutes = require('./routes/comentarioRoutes');
+const perfilRoutes = require('./routes/perfilRoutes');
+
+const { limiteGeral } = require('./middlewares/limitaRequisicoes');
 
 const {
     rotaNaoEncontrada,
@@ -68,9 +70,12 @@ app.use(session({
 app.use(authRoutes);
 app.use('/api', filmeRoutes);
 app.use('/api', serieRoutes);
-
 app.use('/api', midiaRoutes);
 app.use('/api', catalogoRoutes);
+app.use('/api', favoritoRoutes);
+app.use('/api', comentarioRoutes);
+app.use('/api', perfilRoutes);
+
 app.use(rotaNaoEncontrada);
 app.use(trataErro);
 

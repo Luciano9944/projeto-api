@@ -1,7 +1,23 @@
+
 import { useEffect, useState } from 'react';
-import { buscarFilme } from '../services/filmeService';
+import {
+    buscarFilme,
+    buscarElenco,
+    buscarEquipe
+} from '../services/filmeService';
+import { buscarPerfil } from '../services/authService';
+import {
+    verificarFavorito,
+    adicionarFavorito,
+    removerFavorito,
+    listarComentarios,
+    criarComentario,
+    atualizarComentario,
+    excluirComentario
+} from '../services/interacaoService';
 
 const IMAGEM_BASE = 'https://image.tmdb.org/t/p/w500';
+const FOTO_BASE = 'https://image.tmdb.org/t/p/w185';
 
 function DetalhesFilme({
     id,
@@ -12,6 +28,27 @@ function DetalhesFilme({
     const [filme, setFilme] = useState(null);
     const [carregando, setCarregando] = useState(true);
     const [erro, setErro] = useState('');
+
+    const [usuario, setUsuario] = useState(null);
+    const [favoritado, setFavoritado] = useState(false);
+    const [carregandoFavorito, setCarregandoFavorito] = useState(false);
+
+    const [elenco, setElenco] = useState([]);
+    const [equipe, setEquipe] = useState([]);
+    const [mostrarElenco, setMostrarElenco] = useState(false);
+    const [mostrarEquipe, setMostrarEquipe] = useState(false);
+    const [carregandoElenco, setCarregandoElenco] = useState(false);
+    const [carregandoEquipe, setCarregandoEquipe] = useState(false);
+    const [erroCreditos, setErroCreditos] = useState('');
+
+    const [comentarios, setComentarios] = useState([]);
+    const [novoComentario, setNovoComentario] = useState('');
+    const [carregandoComentarios, setCarregandoComentarios] = useState(true);
+    const [erroComentario, setErroComentario] = useState('');
+    const [enviandoComentario, setEnviandoComentario] = useState(false);
+
+    const [comentarioEditando, setComentarioEditando] = useState(null);
+    const [textoEdicao, setTextoEdicao] = useState('');
 
     useEffect(() => {
         async function carregarDetalhes() {
@@ -30,6 +67,169 @@ function DetalhesFilme({
 
         carregarDetalhes();
     }, [id]);
+
+    useEffect(() => {
+        async function verificarUsuario() {
+            try {
+                const dados = await buscarPerfil();
+                setUsuario(dados.usuario);
+
+                const favorito = await verificarFavorito('filme', id);
+                setFavoritado(favorito.favoritado);
+            } catch {
+                setUsuario(null);
+                setFavoritado(false);
+            }
+        }
+
+        verificarUsuario();
+    }, [id]);
+
+    async function carregarComentarios() {
+        try {
+            setCarregandoComentarios(true);
+            setErroComentario('');
+
+            const dados = await listarComentarios('filme', id);
+            setComentarios(dados.comentarios || []);
+        } catch (erro) {
+            setErroComentario(erro.message);
+        } finally {
+            setCarregandoComentarios(false);
+        }
+    }
+
+    useEffect(() => {
+        carregarComentarios();
+    }, [id]);
+
+    async function carregarElenco() {
+        if (elenco.length > 0) {
+            setMostrarElenco(!mostrarElenco);
+            return;
+        }
+
+        try {
+            setCarregandoElenco(true);
+            setErroCreditos('');
+
+            const dados = await buscarElenco(id);
+            setElenco(dados.elenco || []);
+            setMostrarElenco(true);
+        } catch (erro) {
+            setErroCreditos(erro.message);
+        } finally {
+            setCarregandoElenco(false);
+        }
+    }
+
+    async function carregarEquipe() {
+        if (equipe.length > 0) {
+            setMostrarEquipe(!mostrarEquipe);
+            return;
+        }
+
+        try {
+            setCarregandoEquipe(true);
+            setErroCreditos('');
+
+            const dados = await buscarEquipe(id);
+            setEquipe(dados.equipe || []);
+            setMostrarEquipe(true);
+        } catch (erro) {
+            setErroCreditos(erro.message);
+        } finally {
+            setCarregandoEquipe(false);
+        }
+    }
+
+    async function alternarFavorito() {
+        if (!usuario) {
+            setErroComentario('Entre na sua conta para adicionar favoritos.');
+            return;
+        }
+
+        try {
+            setCarregandoFavorito(true);
+
+            if (favoritado) {
+                await removerFavorito('filme', id);
+                setFavoritado(false);
+            } else {
+                await adicionarFavorito('filme', id);
+                setFavoritado(true);
+            }
+        } catch (erro) {
+            setErroComentario(erro.message);
+        } finally {
+            setCarregandoFavorito(false);
+        }
+    }
+
+    async function publicarComentario(event) {
+        event.preventDefault();
+
+        if (!usuario) {
+            setErroComentario('Entre na sua conta para comentar.');
+            return;
+        }
+
+        if (!novoComentario.trim()) {
+            setErroComentario('Digite um comentário antes de publicar.');
+            return;
+        }
+
+        try {
+            setEnviandoComentario(true);
+            setErroComentario('');
+
+            await criarComentario('filme', id, novoComentario);
+
+            setNovoComentario('');
+            await carregarComentarios();
+        } catch (erro) {
+            setErroComentario(erro.message);
+        } finally {
+            setEnviandoComentario(false);
+        }
+    }
+
+    function iniciarEdicao(comentario) {
+        setComentarioEditando(comentario.id);
+        setTextoEdicao(comentario.texto);
+        setErroComentario('');
+    }
+
+    async function salvarEdicao(idComentario) {
+        if (!textoEdicao.trim()) {
+            setErroComentario('O comentário não pode ficar vazio.');
+            return;
+        }
+
+        try {
+            setErroComentario('');
+
+            await atualizarComentario(idComentario, textoEdicao);
+
+            setComentarioEditando(null);
+            setTextoEdicao('');
+
+            await carregarComentarios();
+        } catch (erro) {
+            setErroComentario(erro.message);
+        }
+    }
+
+    async function removerComentario(idComentario) {
+        try {
+            setErroComentario('');
+
+            await excluirComentario(idComentario);
+            await carregarComentarios();
+        } catch (erro) {
+            setErroComentario(erro.message);
+        }
+    }
 
     if (carregando) {
         return (
@@ -106,8 +306,108 @@ function DetalhesFilme({
                     <p>
                         {filme.overview || 'Sinopse não disponível.'}
                     </p>
+
+                    <button
+                        onClick={alternarFavorito}
+                        disabled={!usuario || carregandoFavorito}
+                    >
+                        {carregandoFavorito
+                            ? 'Aguarde...'
+                            : favoritado
+                                ? 'Remover dos favoritos'
+                                : 'Adicionar aos favoritos'}
+                    </button>
+
+                    {!usuario && (
+                        <p>Entre na sua conta para favoritar este filme.</p>
+                    )}
                 </div>
             </div>
+
+            <section className="creditos-filme">
+                <h3>Elenco e equipe técnica</h3>
+
+                <button
+                    onClick={carregarElenco}
+                    disabled={carregandoElenco}
+                >
+                    {carregandoElenco
+                        ? 'Carregando elenco...'
+                        : mostrarElenco
+                            ? 'Ocultar elenco'
+                            : 'Ver elenco'}
+                </button>
+
+                <button
+                    onClick={carregarEquipe}
+                    disabled={carregandoEquipe}
+                >
+                    {carregandoEquipe
+                        ? 'Carregando equipe...'
+                        : mostrarEquipe
+                            ? 'Ocultar equipe técnica'
+                            : 'Ver equipe técnica'}
+                </button>
+
+                {erroCreditos && (
+                    <p className="erro">{erroCreditos}</p>
+                )}
+
+                {mostrarElenco && (
+                    <div className="elenco-filme">
+                        <h4>Elenco</h4>
+
+                        {elenco.length > 0 ? (
+                            elenco.map(ator => (
+                                <article key={ator.id}>
+                                    {ator.foto && (
+                                        <img
+                                            src={`${FOTO_BASE}${ator.foto}`}
+                                            alt={ator.nome}
+                                            width="80"
+                                        />
+                                    )}
+
+                                    <p><strong>{ator.nome}</strong></p>
+                                    <p>Personagem: {ator.personagem || 'Não informado'}</p>
+                                </article>
+                            ))
+                        ) : (
+                            <p>Nenhuma informação de elenco disponível.</p>
+                        )}
+                    </div>
+                )}
+
+                {mostrarEquipe && (
+                    <div className="equipe-filme">
+                        <h4>Equipe técnica</h4>
+
+                        {equipe.length > 0 ? (
+                            equipe.map(profissional => (
+                                <article key={`${profissional.id}-${profissional.funcao}`}>
+                                    {profissional.foto && (
+                                        <img
+                                            src={`${FOTO_BASE}${profissional.foto}`}
+                                            alt={profissional.nome}
+                                            width="80"
+                                        />
+                                    )}
+
+                                    <p><strong>{profissional.nome}</strong></p>
+                                    <p>
+                                        Departamento: {profissional.departamento || 'Não informado'}
+                                    </p>
+                                    <p>
+                                        Função: {profissional.funcao || 'Não informada'}
+                                    </p>
+                                </article>
+                            ))
+                        ) : (
+                            <p>Nenhuma informação de equipe técnica disponível.</p>
+                        )}
+                    </div>
+                )}
+            </section>
 
             {origemCatalogo && (
                 <section className="midias-filme">
@@ -140,6 +440,96 @@ function DetalhesFilme({
                     )}
                 </section>
             )}
+
+            <section className="comentarios-filme">
+                <h3>Comentários</h3>
+
+                {usuario ? (
+                    <form onSubmit={publicarComentario}>
+                        <textarea
+                            value={novoComentario}
+                            onChange={event => setNovoComentario(event.target.value)}
+                            placeholder="Escreva seu comentário..."
+                            maxLength={3000}
+                            rows={4}
+                        />
+
+                        <button type="submit" disabled={enviandoComentario}>
+                            {enviandoComentario
+                                ? 'Publicando...'
+                                : 'Publicar comentário'}
+                        </button>
+                    </form>
+                ) : (
+                    <p>Entre na sua conta para publicar comentários.</p>
+                )}
+
+                {erroComentario && (
+                    <p className="erro">{erroComentario}</p>
+                )}
+
+                {carregandoComentarios ? (
+                    <p>Carregando comentários...</p>
+                ) : comentarios.length > 0 ? (
+                    comentarios.map(comentario => (
+                        <article
+                            className="comentario"
+                            key={comentario.id}
+                        >
+                            <h4>{comentario.nome_usuario}</h4>
+
+                            {comentarioEditando === comentario.id ? (
+                                <>
+                                    <textarea
+                                        value={textoEdicao}
+                                        onChange={event => setTextoEdicao(event.target.value)}
+                                        maxLength={3000}
+                                        rows={4}
+                                    />
+
+                                    <button
+                                        onClick={() => salvarEdicao(comentario.id)}
+                                    >
+                                        Salvar
+                                    </button>
+
+                                    <button
+                                        onClick={() => setComentarioEditando(null)}
+                                    >
+                                        Cancelar
+                                    </button>
+                                </>
+                            ) : (
+                                <p>{comentario.texto}</p>
+                            )}
+
+                            <small>
+                                {new Date(comentario.criado_em).toLocaleString('pt-BR')}
+                            </small>
+
+                            {usuario &&
+                                String(usuario.id) === String(comentario.usuario_id) &&
+                                comentarioEditando !== comentario.id && (
+                                    <div>
+                                        <button
+                                            onClick={() => iniciarEdicao(comentario)}
+                                        >
+                                            Editar
+                                        </button>
+
+                                        <button
+                                            onClick={() => removerComentario(comentario.id)}
+                                        >
+                                            Excluir
+                                        </button>
+                                    </div>
+                                )}
+                        </article>
+                    ))
+                ) : (
+                    <p>Nenhum comentário publicado ainda.</p>
+                )}
+            </section>
         </section>
     );
 }

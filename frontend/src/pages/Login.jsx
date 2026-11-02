@@ -1,69 +1,81 @@
-import { useState } from 'react';
-import { realizarLogin } from '../services/authService';
 
-function Login({ onLogin }) {
+import { useState } from 'react';
+
+import {
+    realizarLogin,
+    buscarPerfil
+} from '../services/authService';
+
+function Login({ onLogin, onCadastro }) {
     const [email, setEmail] = useState('');
     const [senha, setSenha] = useState('');
-    const [erro, setErro] = useState('');
+    const [mensagem, setMensagem] = useState('');
     const [carregando, setCarregando] = useState(false);
 
-    async function handleSubmit(event) {
+    async function entrar(event) {
         event.preventDefault();
 
-        setErro('');
-        setCarregando(true);
+        if (!email.trim() || !senha) {
+            setMensagem('Informe o e-mail e a senha.');
+            return;
+        }
 
         try {
-            const dados = await realizarLogin(email, senha);
+            setCarregando(true);
+            setMensagem('');
 
-            if (dados.usuario.papel !== 'admin') {
-                setErro('Esta conta não possui permissão de administrador.');
-                return;
-            }
+            await realizarLogin(email, senha);
+
+            const dados = await buscarPerfil();
 
             onLogin(dados.usuario);
+
+            setEmail('');
+            setSenha('');
         } catch (erro) {
-            setErro(erro.message);
+            setMensagem(erro.message);
         } finally {
             setCarregando(false);
         }
     }
 
     return (
-        <section>
-            <h2>Login administrativo</h2>
+        <section className="login">
+            <h2>Entrar na conta</h2>
 
-            <form onSubmit={handleSubmit}>
-                <div>
-                    <label htmlFor="email">E-mail:</label>
+            <form className="login-form" onSubmit={entrar}>
+                <input
+                    type="email"
+                    placeholder="E-mail"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                />
 
-                    <input
-                        id="email"
-                        type="email"
-                        value={email}
-                        onChange={event => setEmail(event.target.value)}
-                        required
-                    />
-                </div>
-
-                <div>
-                    <label htmlFor="senha">Senha:</label>
-
-                    <input
-                        id="senha"
-                        type="password"
-                        value={senha}
-                        onChange={event => setSenha(event.target.value)}
-                        required
-                    />
-                </div>
+                <input
+                    type="password"
+                    placeholder="Senha"
+                    value={senha}
+                    onChange={(e) => setSenha(e.target.value)}
+                    required
+                />
 
                 <button type="submit" disabled={carregando}>
                     {carregando ? 'Entrando...' : 'Entrar'}
                 </button>
             </form>
 
-            {erro && <p>{erro}</p>}
+            {mensagem && (
+                <p className="mensagem-login">
+                    {mensagem}
+                </p>
+            )}
+
+            <p>Ainda não tem uma conta?</p>
+
+            <button type="button" onClick={onCadastro}>
+                Criar conta
+            </button>
         </section>
     );
 }

@@ -84,7 +84,6 @@ async function buscarPorNome(query, pagina) {
     );
 }
 
-
 async function buscarPorId(id) {
     const serie = await repository.buscarPorId(
         validarId(id)
@@ -94,6 +93,8 @@ async function buscarPorId(id) {
         id: serie.id,
         nome: serie.name,
         sinopse: serie.overview,
+        poster_path: serie.poster_path,
+        backdrop_path: serie.backdrop_path,
         data_estreia: serie.first_air_date,
         data_ultima_exibicao: serie.last_air_date,
         temporadas: serie.number_of_seasons,
@@ -180,8 +181,6 @@ async function buscarEquipe(id) {
         }))
     };
 }
-
-
 
 module.exports = {
     listarMarvel,

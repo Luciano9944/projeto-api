@@ -1,3 +1,4 @@
+
 const API_URL = 'http://localhost:3000/api/filmes';
 const API_CATALOGO = 'http://localhost:3000/api/catalogo';
 
@@ -65,6 +66,16 @@ export async function listarMarvel(pagina = 1) {
 // Busca detalhes de um filme no TMDB.
 export async function buscarFilme(id) {
     return requisitar(`${API_URL}/${id}`);
+}
+
+// Busca o elenco de um filme.
+export async function buscarElenco(id) {
+    return requisitar(`${API_URL}/${id}/elenco`);
+}
+
+// Busca a equipe técnica de um filme.
+export async function buscarEquipe(id) {
+    return requisitar(`${API_URL}/${id}/equipe`);
 }
 
 // Lista os filmes cadastrados no catálogo próprio.

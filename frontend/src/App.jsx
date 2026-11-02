@@ -1,9 +1,12 @@
+
 import { useEffect, useState } from 'react';
 
 import Filmes from './pages/Filmes';
 import Series from './pages/Series';
 import AdminCatalogo from './pages/AdminCatalogo';
 import Login from './pages/Login';
+import Cadastro from './pages/Cadastro';
+import Perfil from './pages/Perfil';
 
 import {
     buscarPerfil,
@@ -20,7 +23,7 @@ function App() {
             try {
                 const dados = await buscarPerfil();
 
-                if (dados.usuario?.papel === 'admin') {
+                if (dados.autenticado && dados.usuario) {
                     setUsuario(dados.usuario);
                 }
             } catch {
@@ -44,6 +47,19 @@ function App() {
         }
     }
 
+    function handleLogin(dadosUsuario) {
+        setUsuario(dadosUsuario);
+        setCatalogo('perfil');
+    }
+
+    function handleCadastro() {
+        setCatalogo('cadastro');
+    }
+
+    function handleCadastroConcluido() {
+        setCatalogo('login');
+    }
+
     return (
         <div className="app">
             <header>
@@ -53,13 +69,15 @@ function App() {
                         <p>Explore filmes, séries e descubra novidades.</p>
                     </div>
 
-                    <button
-                        type="button"
-                        className={catalogo === 'admin' ? 'ativo' : ''}
-                        onClick={() => setCatalogo('admin')}
-                    >
-                        Administração
-                    </button>
+                    {usuario?.papel === 'admin' && (
+                        <button
+                            type="button"
+                            className={catalogo === 'admin' ? 'ativo' : ''}
+                            onClick={() => setCatalogo('admin')}
+                        >
+                            Administração
+                        </button>
+                    )}
                 </div>
 
                 <nav className="navegacao-catalogo">
@@ -78,33 +96,92 @@ function App() {
                     >
                         Séries
                     </button>
+
+                    <button
+                        type="button"
+                        className={
+                            ['perfil', 'login', 'cadastro'].includes(catalogo)
+                                ? 'ativo'
+                                : ''
+                        }
+                        onClick={() => {
+                            setCatalogo(usuario ? 'perfil' : 'login');
+                        }}
+                    >
+                        {usuario ? 'Meu perfil' : 'Minha conta'}
+                    </button>
                 </nav>
             </header>
 
             <main>
-                {catalogo === 'admin' ? (
+                {catalogo === 'filmes' ? (
+                    <Filmes
+                        key="filmes"
+                        categoriaInicial="populares"
+                    />
+                ) : catalogo === 'series' ? (
+                    <Series
+                        key="series"
+                        categoriaInicial="populares"
+                    />
+                ) : catalogo === 'perfil' ? (
                     verificandoSessao ? (
                         <p>Verificando sessão...</p>
                     ) : usuario ? (
                         <section>
-                            <p>
-                                Administrador: {usuario.nome}
-                            </p>
+                            <p>Olá, {usuario.nome}!</p>
 
-                            <button onClick={handleLogout}>
+                            <button
+                                type="button"
+                                onClick={handleLogout}
+                            >
+                                Sair
+                            </button>
+
+                            <Perfil key={usuario.id} />
+                        </section>
+                    ) : (
+                        <Login
+                            onLogin={handleLogin}
+                            onCadastro={handleCadastro}
+                        />
+                    )
+                ) : catalogo === 'login' ? (
+                    verificandoSessao ? (
+                        <p>Verificando sessão...</p>
+                    ) : usuario ? (
+                        <Perfil key={usuario.id} />
+                    ) : (
+                        <Login
+                            onLogin={handleLogin}
+                            onCadastro={handleCadastro}
+                        />
+                    )
+                ) : catalogo === 'cadastro' ? (
+                    <Cadastro
+                        aoCadastrar={handleCadastroConcluido}
+                        aoVoltarLogin={() => setCatalogo('login')}
+                    />
+                ) : catalogo === 'admin' ? (
+                    verificandoSessao ? (
+                        <p>Verificando sessão...</p>
+                    ) : usuario?.papel === 'admin' ? (
+                        <section>
+                            <p>Administrador: {usuario.nome}</p>
+
+                            <button
+                                type="button"
+                                onClick={handleLogout}
+                            >
                                 Sair
                             </button>
 
                             <AdminCatalogo />
                         </section>
                     ) : (
-                        <Login onLogin={setUsuario} />
+                        <p>Acesso restrito aos administradores.</p>
                     )
-                ) : catalogo === 'filmes' ? (
-                    <Filmes key="filmes" categoriaInicial="populares" />
-                ) : (
-                    <Series key="series" categoriaInicial="populares" />
-                )}
+                ) : null}
             </main>
 
             <footer>

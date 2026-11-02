@@ -1,3 +1,4 @@
+
 const API_URL = 'http://localhost:3000/api';
 
 async function requisitar(endpoint, opcoes = {}) {
@@ -36,6 +37,15 @@ async function requisitar(endpoint, opcoes = {}) {
     return dados;
 }
 
+// Cria uma conta de usuário comum.
+export async function cadastrarUsuario(nome, email, senha) {
+    return requisitar('/cadastro', {
+        method: 'POST',
+        body: JSON.stringify({ nome, email, senha })
+    });
+}
+
+// Realiza o login.
 export async function realizarLogin(email, senha) {
     return requisitar('/login', {
         method: 'POST',
@@ -43,10 +53,12 @@ export async function realizarLogin(email, senha) {
     });
 }
 
+// Consulta os dados da sessão.
 export async function buscarPerfil() {
     return requisitar('/perfil');
 }
 
+// Encerra a sessão.
 export async function realizarLogout() {
     return requisitar('/logout', {
         method: 'POST'
