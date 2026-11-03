@@ -45,6 +45,7 @@ function DetalhesFilme({
     const [novoComentario, setNovoComentario] = useState('');
     const [carregandoComentarios, setCarregandoComentarios] = useState(true);
     const [erroComentario, setErroComentario] = useState('');
+    const [comentariosRestritos, setComentariosRestritos] = useState(false);
     const [enviandoComentario, setEnviandoComentario] = useState(false);
 
     const [comentarioEditando, setComentarioEditando] = useState(null);
@@ -74,8 +75,14 @@ function DetalhesFilme({
                 const dados = await buscarPerfil();
                 setUsuario(dados.usuario);
 
-                const favorito = await verificarFavorito('filme', id);
-                setFavoritado(favorito.favoritado);
+                if (dados.usuario) {
+                    try {
+                        const favorito = await verificarFavorito('filme', id);
+                        setFavoritado(favorito.favoritado);
+                    } catch (erro) {
+                        setErroComentario(erro.message);
+                    }
+                }
             } catch {
                 setUsuario(null);
                 setFavoritado(false);
@@ -100,7 +107,16 @@ function DetalhesFilme({
     }
 
     useEffect(() => {
-        carregarComentarios();
+        let ativo = true;
+        listarComentarios('filme', id)
+            .then(dados => { if (ativo) setComentarios(dados.comentarios || []); })
+            .catch(erro => {
+                if (!ativo) return;
+                if (erro.status === 401) setComentariosRestritos(true);
+                else setErroComentario(erro.message);
+            })
+            .finally(() => { if (ativo) setCarregandoComentarios(false); });
+        return () => { ativo = false; };
     }, [id]);
 
     async function carregarElenco() {
@@ -221,6 +237,7 @@ function DetalhesFilme({
     }
 
     async function removerComentario(idComentario) {
+        if (!window.confirm("Excluir este comentário? Esta ação não pode ser desfeita.")) return;
         try {
             setErroComentario('');
 
@@ -244,7 +261,7 @@ function DetalhesFilme({
         return (
             <section className="detalhes-filme">
                 <button onClick={onVoltar}>Voltar ao catálogo</button>
-                <p className="erro">{erro || 'Filme não encontrado.'}</p>
+                <p className="erro" role="alert">{erro || 'Filme não encontrado.'}</p>
             </section>
         );
     }
@@ -255,7 +272,7 @@ function DetalhesFilme({
 
             <div className="detalhes-conteudo">
                 {filme.poster_path && (
-                    <img
+                    <img width="300" height="450"
                         className="detalhes-poster"
                         src={`${IMAGEM_BASE}${filme.poster_path}`}
                         alt={`Pôster de ${filme.title}`}
@@ -263,7 +280,7 @@ function DetalhesFilme({
                 )}
 
                 <div className="detalhes-informacoes">
-                    <h2>{filme.title}</h2>
+                    <h1>{filme.title}</h1>
 
                     {filme.original_title &&
                         filme.original_title !== filme.title && (
@@ -302,17 +319,17 @@ function DetalhesFilme({
                             : 'Não informados'}
                     </p>
 
-                    <h3>Sinopse</h3>
+                    <h2>Sinopse</h2>
                     <p>
                         {filme.overview || 'Sinopse não disponível.'}
                     </p>
 
                     <button
-                        onClick={alternarFavorito}
+                        onClick={alternarFavorito} aria-pressed={favoritado}
                         disabled={!usuario || carregandoFavorito}
                     >
                         {carregandoFavorito
-                            ? 'Aguarde...'
+                            ? 'Aguarde…'
                             : favoritado
                                 ? 'Remover dos favoritos'
                                 : 'Adicionar aos favoritos'}
@@ -325,46 +342,46 @@ function DetalhesFilme({
             </div>
 
             <section className="creditos-filme">
-                <h3>Elenco e equipe técnica</h3>
+                <h2>Elenco e equipe técnica</h2>
 
                 <button
-                    onClick={carregarElenco}
+                    onClick={carregarElenco} aria-expanded={mostrarElenco}
                     disabled={carregandoElenco}
                 >
                     {carregandoElenco
-                        ? 'Carregando elenco...'
+                        ? 'Carregando elenco…'
                         : mostrarElenco
                             ? 'Ocultar elenco'
                             : 'Ver elenco'}
                 </button>
 
                 <button
-                    onClick={carregarEquipe}
+                    onClick={carregarEquipe} aria-expanded={mostrarEquipe}
                     disabled={carregandoEquipe}
                 >
                     {carregandoEquipe
-                        ? 'Carregando equipe...'
+                        ? 'Carregando equipe…'
                         : mostrarEquipe
                             ? 'Ocultar equipe técnica'
                             : 'Ver equipe técnica'}
                 </button>
 
                 {erroCreditos && (
-                    <p className="erro">{erroCreditos}</p>
+                    <p className="erro" role="alert">{erroCreditos}</p>
                 )}
 
                 {mostrarElenco && (
                     <div className="elenco-filme">
-                        <h4>Elenco</h4>
+                        <h3>Elenco</h3>
 
                         {elenco.length > 0 ? (
                             elenco.map(ator => (
                                 <article key={ator.id}>
                                     {ator.foto && (
-                                        <img
+                                        <img width="80" height="110" loading="lazy"
                                             src={`${FOTO_BASE}${ator.foto}`}
                                             alt={ator.nome}
-                                            width="80"
+
                                         />
                                     )}
 
@@ -380,16 +397,16 @@ function DetalhesFilme({
 
                 {mostrarEquipe && (
                     <div className="equipe-filme">
-                        <h4>Equipe técnica</h4>
+                        <h3>Equipe técnica</h3>
 
                         {equipe.length > 0 ? (
                             equipe.map(profissional => (
                                 <article key={`${profissional.id}-${profissional.funcao}`}>
                                     {profissional.foto && (
-                                        <img
+                                        <img width="80" height="110" loading="lazy"
                                             src={`${FOTO_BASE}${profissional.foto}`}
                                             alt={profissional.nome}
-                                            width="80"
+
                                         />
                                     )}
 
@@ -411,7 +428,7 @@ function DetalhesFilme({
 
             {origemCatalogo && (
                 <section className="midias-filme">
-                    <h3>Assistir filme</h3>
+                    <h2>Assistir filme</h2>
 
                     {midias.length > 0 ? (
                         midias.map(midia => (
@@ -419,7 +436,7 @@ function DetalhesFilme({
                                 className="midia-filme"
                                 key={midia.id}
                             >
-                                <h4>{midia.titulo}</h4>
+                                <h3>{midia.titulo}</h3>
 
                                 {midia.descricao && (
                                     <p>{midia.descricao}</p>
@@ -442,11 +459,12 @@ function DetalhesFilme({
             )}
 
             <section className="comentarios-filme">
-                <h3>Comentários</h3>
+                <h2>Comentários</h2>
 
                 {usuario ? (
                     <form onSubmit={publicarComentario}>
-                        <textarea
+                        <label htmlFor="novo-comentario-filme">Escreva seu comentário</label>
+                        <textarea id="novo-comentario-filme" name="comentario"
                             value={novoComentario}
                             onChange={event => setNovoComentario(event.target.value)}
                             placeholder="Escreva seu comentário..."
@@ -456,31 +474,31 @@ function DetalhesFilme({
 
                         <button type="submit" disabled={enviandoComentario}>
                             {enviandoComentario
-                                ? 'Publicando...'
+                                ? 'Publicando…'
                                 : 'Publicar comentário'}
                         </button>
                     </form>
                 ) : (
-                    <p>Entre na sua conta para publicar comentários.</p>
+                    <p>{comentariosRestritos ? 'Entre na sua conta para ver e publicar comentários.' : 'Entre na sua conta para publicar comentários.'}</p>
                 )}
 
                 {erroComentario && (
-                    <p className="erro">{erroComentario}</p>
+                    <p className="erro" role="alert">{erroComentario}</p>
                 )}
 
                 {carregandoComentarios ? (
-                    <p>Carregando comentários...</p>
+                    <p role="status">Carregando comentários…</p>
                 ) : comentarios.length > 0 ? (
                     comentarios.map(comentario => (
                         <article
                             className="comentario"
                             key={comentario.id}
                         >
-                            <h4>{comentario.nome_usuario}</h4>
+                            <h3>{comentario.nome_usuario}</h3>
 
                             {comentarioEditando === comentario.id ? (
                                 <>
-                                    <textarea
+                                    <textarea aria-label="Comentário" name="comentario"
                                         value={textoEdicao}
                                         onChange={event => setTextoEdicao(event.target.value)}
                                         maxLength={3000}
@@ -527,7 +545,7 @@ function DetalhesFilme({
                         </article>
                     ))
                 ) : (
-                    <p>Nenhum comentário publicado ainda.</p>
+                    !comentariosRestritos && !erroComentario && <p>Nenhum comentário publicado ainda.</p>
                 )}
             </section>
         </section>

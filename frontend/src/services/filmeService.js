@@ -1,6 +1,6 @@
 
-const API_URL = 'http://localhost:3000/api/filmes';
-const API_CATALOGO = 'http://localhost:3000/api/catalogo';
+const API_URL = '/api/filmes';
+const API_CATALOGO = '/api/catalogo';
 
 async function requisitar(url) {
     let resposta;

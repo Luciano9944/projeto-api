@@ -7,6 +7,8 @@ import AdminCatalogo from './pages/AdminCatalogo';
 import Login from './pages/Login';
 import Cadastro from './pages/Cadastro';
 import Perfil from './pages/Perfil';
+import Conteudo from './pages/Conteudo';
+import { lerRota } from './utils/navegacao';
 
 import {
     buscarPerfil,
@@ -14,7 +16,23 @@ import {
 } from './services/authService';
 
 function App() {
-    const [catalogo, setCatalogo] = useState('filmes');
+    const [rota, setRota] = useState(lerRota);
+    const catalogo = rota.pagina;
+    useEffect(() => {
+        const atualizar = () => {
+            const pagina = location.hash.slice(1);
+            if (['conteudo', 'acervo'].includes(pagina)) return;
+            const proximaRota = lerRota();
+            setRota(proximaRota);
+            if (proximaRota.conteudoId) window.scrollTo(0, 0);
+        };
+        window.addEventListener('hashchange', atualizar);
+        return () => window.removeEventListener('hashchange', atualizar);
+    }, []);
+    function navegar(pagina) { location.hash = pagina; setRota(lerRota()); }
+    const [erroSessao, setErroSessao] = useState('');
+    const [saindo, setSaindo] = useState(false);
+    const [avisoConta, setAvisoConta] = useState('');
     const [usuario, setUsuario] = useState(null);
     const [verificandoSessao, setVerificandoSessao] = useState(true);
 
@@ -37,147 +55,113 @@ function App() {
     }, []);
 
     async function handleLogout() {
+        setSaindo(true);
+        setErroSessao('');
         try {
             await realizarLogout();
-        } catch (erro) {
-            console.error('Erro ao encerrar sessão:', erro);
-        } finally {
             setUsuario(null);
-            setCatalogo('filmes');
+            navegar('filmes');
+        } catch (erro) {
+            setErroSessao(erro.message + ' Tente sair novamente.');
+        } finally {
+            setSaindo(false);
         }
     }
 
     function handleLogin(dadosUsuario) {
         setUsuario(dadosUsuario);
-        setCatalogo('perfil');
+        setErroSessao('');
+        setAvisoConta('');
+        navegar('perfil');
     }
 
     function handleCadastro() {
-        setCatalogo('cadastro');
+        navegar('cadastro');
     }
 
     function handleCadastroConcluido() {
-        setCatalogo('login');
+        setAvisoConta('Conta criada! Entre com seu e-mail e sua senha.');
+        navegar('login');
     }
 
     return (
         <div className="app">
-            <header>
-                <div className="cabecalho-principal">
-                    <div>
-                        <h1>🎬 CineCatalog</h1>
-                        <p>Explore filmes, séries e descubra novidades.</p>
-                    </div>
-
-                    {usuario?.papel === 'admin' && (
-                        <button
-                            type="button"
-                            className={catalogo === 'admin' ? 'ativo' : ''}
-                            onClick={() => setCatalogo('admin')}
-                        >
-                            Administração
-                        </button>
+            <a className="pular-conteudo" href="#conteudo" onClick={event => {
+                event.preventDefault();
+                document.getElementById('conteudo')?.focus();
+            }}>Pular para o conteúdo</a>
+            <header className="cabecalho">
+                <a className="marca" href="#filmes" aria-label="CineMarvel, início" translate="no">
+                    Cine<span>Marvel</span>
+                </a>
+                <nav className="navegacao-catalogo" aria-label="Navegação principal">
+                    {[['filmes', 'Filmes'], ['series', 'Séries'], ...(usuario?.papel === 'admin' ? [['admin', 'Administração']] : [])].map(([pagina, titulo]) => (
+                        <a key={pagina} href={'#' + pagina} className={catalogo === pagina ? 'ativo' : ''} aria-current={catalogo === pagina ? 'page' : undefined}>{titulo}</a>
+                    ))}
+                    {usuario ? (
+                        <div className="sessao-usuario">
+                            <a href="#perfil" className={catalogo === 'perfil' ? 'conta-usuario ativo' : 'conta-usuario'} aria-current={catalogo === 'perfil' ? 'page' : undefined} aria-label={usuario.nome + ', ver meu perfil'}>
+                                <span className="avatar-usuario" aria-hidden="true">{usuario.nome?.trim().charAt(0).toUpperCase()}</span>
+                                <span className="nome-usuario" title={usuario.nome}>{usuario.nome}</span>
+                            </a>
+                            <button className="botao-sair" type="button" onClick={handleLogout} disabled={saindo}>
+                                {saindo ? 'Saindo…' : 'Sair'}
+                            </button>
+                        </div>
+                    ) : (
+                        <a href="#login" className={['login', 'cadastro'].includes(catalogo) ? 'ativo' : ''} aria-current={catalogo === 'login' ? 'page' : undefined}>Minha conta</a>
                     )}
-                </div>
-
-                <nav className="navegacao-catalogo">
-                    <button
-                        type="button"
-                        className={catalogo === 'filmes' ? 'ativo' : ''}
-                        onClick={() => setCatalogo('filmes')}
-                    >
-                        Filmes
-                    </button>
-
-                    <button
-                        type="button"
-                        className={catalogo === 'series' ? 'ativo' : ''}
-                        onClick={() => setCatalogo('series')}
-                    >
-                        Séries
-                    </button>
-
-                    <button
-                        type="button"
-                        className={
-                            ['perfil', 'login', 'cadastro'].includes(catalogo)
-                                ? 'ativo'
-                                : ''
-                        }
-                        onClick={() => {
-                            setCatalogo(usuario ? 'perfil' : 'login');
-                        }}
-                    >
-                        {usuario ? 'Meu perfil' : 'Minha conta'}
-                    </button>
                 </nav>
             </header>
+            <main id="conteudo" tabIndex={-1}>
+                {erroSessao && <p className="erro" role="alert">{erroSessao}</p>}
 
-            <main>
-                {catalogo === 'filmes' ? (
+                {rota.conteudoId ? (
+                    <Conteudo key={catalogo + '-' + rota.conteudoId + '-' + (usuario?.id ?? 'visitante')} tipo={catalogo} id={rota.conteudoId} onVoltar={() => navegar(catalogo)} />
+                ) : catalogo === 'filmes' ? (
                     <Filmes
-                        key="filmes"
+                        key={'filmes-' + (usuario?.id ?? 'visitante')}
                         categoriaInicial="populares"
                     />
                 ) : catalogo === 'series' ? (
                     <Series
-                        key="series"
+                        key={'series-' + (usuario?.id ?? 'visitante')}
                         categoriaInicial="populares"
                     />
                 ) : catalogo === 'perfil' ? (
                     verificandoSessao ? (
-                        <p>Verificando sessão...</p>
-                    ) : usuario ? (
-                        <section>
-                            <p>Olá, {usuario.nome}!</p>
-
-                            <button
-                                type="button"
-                                onClick={handleLogout}
-                            >
-                                Sair
-                            </button>
-
-                            <Perfil key={usuario.id} />
-                        </section>
-                    ) : (
-                        <Login
-                            onLogin={handleLogin}
-                            onCadastro={handleCadastro}
-                        />
-                    )
-                ) : catalogo === 'login' ? (
-                    verificandoSessao ? (
-                        <p>Verificando sessão...</p>
+                        <p role="status">Verificando sessão…</p>
                     ) : usuario ? (
                         <Perfil key={usuario.id} />
                     ) : (
                         <Login
                             onLogin={handleLogin}
+                            aviso={avisoConta}
+                            onCadastro={handleCadastro}
+                        />
+                    )
+                ) : catalogo === 'login' ? (
+                    verificandoSessao ? (
+                        <p role="status">Verificando sessão…</p>
+                    ) : usuario ? (
+                        <Perfil key={usuario.id} />
+                    ) : (
+                        <Login
+                            onLogin={handleLogin}
+                            aviso={avisoConta}
                             onCadastro={handleCadastro}
                         />
                     )
                 ) : catalogo === 'cadastro' ? (
                     <Cadastro
                         aoCadastrar={handleCadastroConcluido}
-                        aoVoltarLogin={() => setCatalogo('login')}
+                        aoVoltarLogin={() => navegar('login')}
                     />
                 ) : catalogo === 'admin' ? (
                     verificandoSessao ? (
-                        <p>Verificando sessão...</p>
+                        <p role="status">Verificando sessão…</p>
                     ) : usuario?.papel === 'admin' ? (
-                        <section>
-                            <p>Administrador: {usuario.nome}</p>
-
-                            <button
-                                type="button"
-                                onClick={handleLogout}
-                            >
-                                Sair
-                            </button>
-
-                            <AdminCatalogo />
-                        </section>
+                        <AdminCatalogo />
                     ) : (
                         <p>Acesso restrito aos administradores.</p>
                     )
@@ -185,7 +169,7 @@ function App() {
             </main>
 
             <footer>
-                Catálogo de filmes e séries • React + Vite + Express + TMDB
+                <span translate="no">CineMarvel</span><small>Dados de filmes e séries fornecidos pelo TMDB.</small>
             </footer>
         </div>
     );

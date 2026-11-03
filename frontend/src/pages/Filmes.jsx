@@ -1,3 +1,5 @@
+import BarraCatalogo from '../components/BarraCatalogo';
+import CartaoConteudo from '../components/CartaoConteudo';
 import { useEffect, useState } from 'react';
 
 import {
@@ -9,7 +11,6 @@ import {
 
 import DetalhesFilme from '../components/DetalhesFilme';
 
-const IMAGEM_BASE = 'https://image.tmdb.org/t/p/w500';
 
 function Filmes({ categoriaInicial = 'populares' }) {
     const [filmes, setFilmes] = useState([]);
@@ -19,11 +20,13 @@ function Filmes({ categoriaInicial = 'populares' }) {
     const [pagina, setPagina] = useState(1);
     const [totalPaginas, setTotalPaginas] = useState(1);
 
-    const [carregando, setCarregando] = useState(false);
+    const [carregando, setCarregando] = useState(true);
     const [erro, setErro] = useState('');
     const [filmeSelecionado, setFilmeSelecionado] = useState(null);
 
     useEffect(() => {
+        let ativo = true;
+
         async function carregarFilmes() {
             try {
                 setCarregando(true);
@@ -40,6 +43,8 @@ function Filmes({ categoriaInicial = 'populares' }) {
                 } else {
                     dados = await listarPopulares(pagina);
                 }
+
+                if (!ativo) return;
 
                 if (categoria === 'catalogo') {
                     const filmesCatalogo = dados
@@ -65,14 +70,16 @@ function Filmes({ categoriaInicial = 'populares' }) {
                     );
                 }
             } catch (erro) {
+                if (!ativo) return;
                 setErro(erro.message);
                 setFilmes([]);
             } finally {
-                setCarregando(false);
+                if (ativo) setCarregando(false);
             }
         }
 
         carregarFilmes();
+        return () => { ativo = false; };
     }, [categoria, pagina, consultaAtiva]);
 
     function pesquisar(event) {
@@ -91,6 +98,7 @@ function Filmes({ categoriaInicial = 'populares' }) {
     }
 
     function mudarCategoria(novaCategoria) {
+        setPesquisa('');
         setPagina(1);
         setCategoria(novaCategoria);
         setErro('');
@@ -108,6 +116,7 @@ function Filmes({ categoriaInicial = 'populares' }) {
     if (filmeSelecionado !== null) {
         return (
             <DetalhesFilme
+                key={filmeSelecionado.id}
                 id={filmeSelecionado.id}
                 midias={filmeSelecionado.midias}
                 origemCatalogo={filmeSelecionado.origemCatalogo}
@@ -118,111 +127,37 @@ function Filmes({ categoriaInicial = 'populares' }) {
 
     return (
         <section className="catalogo">
-            <nav className="categorias-filmes">
-                <button
-                    type="button"
-                    className={categoria === 'populares' ? 'ativo' : ''}
-                    onClick={() => mudarCategoria('populares')}
-                >
-                    Filmes populares
-                </button>
+            <BarraCatalogo
+                tipo="filmes"
+                categoria={categoria}
+                consultaAtiva={consultaAtiva}
+                consulta={pesquisa}
+                onConsulta={setPesquisa}
+                onPesquisar={pesquisar}
+                onCategoria={mudarCategoria}
+            />
 
-                <button
-                    type="button"
-                    className={categoria === 'marvel' ? 'ativo' : ''}
-                    onClick={() => mudarCategoria('marvel')}
-                >
-                    Filmes Marvel
-                </button>
+            {carregando && <p className="sr-only" role="status">Carregando filmes…</p>}
 
-                <button
-                    type="button"
-                    className={categoria === 'catalogo' ? 'ativo' : ''}
-                    onClick={() => mudarCategoria('catalogo')}
-                >
-                    Disponíveis no site
-                </button>
-            </nav>
-
-            <form className="formulario-busca" onSubmit={pesquisar}>
-                <input
-                    type="text"
-                    value={pesquisa}
-                    onChange={(event) => setPesquisa(event.target.value)}
-                    placeholder="Pesquisar filme pelo título..."
-                />
-
-                <button type="submit">Pesquisar</button>
-            </form>
-
-            <h2>
-                {categoria === 'marvel'
-                    ? 'Filmes Marvel'
-                    : categoria === 'busca'
-                        ? `Resultados para "${consultaAtiva}"`
-                        : categoria === 'catalogo'
-                            ? 'Disponíveis no site'
-                            : 'Filmes populares'}
-            </h2>
-
-            {carregando && <p>Carregando filmes...</p>}
-
-            {erro && <p className="erro">Erro: {erro}</p>}
+            {erro && <p className="erro" role="alert">Erro: {erro}</p>}
 
             {!carregando && !erro && filmes.length === 0 && (
-                <p>Nenhum filme encontrado.</p>
+                <p>Nenhum filme encontrado. Tente outro título ou explore as categorias.</p>
             )}
 
-            <div className="grade-filmes">
-                {filmes.map((filme) => (
-                    <article className="cartao-filme" key={filme.id}>
-                        {filme.poster_path ? (
-                            <button
-                                type="button"
-                                className="filme-clicavel"
-                                onClick={() => abrirDetalhes(filme)}
-                                aria-label={`Ver detalhes de ${filme.title}`}
-                            >
-                                <img
-                                    src={`${IMAGEM_BASE}${filme.poster_path}`}
-                                    alt={`Pôster de ${filme.title}`}
-                                    loading="lazy"
-                                />
-                            </button>
-                        ) : (
-                            <button
-                                type="button"
-                                className="filme-clicavel poster-indisponivel"
-                                onClick={() => abrirDetalhes(filme)}
-                            >
-                                Pôster indisponível
-                            </button>
-                        )}
-
-                        <div className="informacoes-filme">
-                            <h3>
-                                <button
-                                    type="button"
-                                    className="filme-titulo-clicavel"
-                                    onClick={() => abrirDetalhes(filme)}
-                                >
-                                    {filme.title}
-                                </button>
-                            </h3>
-
-                            <p>
-                                Ano: {filme.release_date
-                                    ? filme.release_date.slice(0, 4)
-                                    : 'Não informado'}
-                            </p>
-
-                            <p>
-                                Nota: {Number(
-                                    filme.vote_average || 0
-                                ).toFixed(1)}
-                            </p>
-                        </div>
-                    </article>
+            <div className="grade-filmes" aria-busy={carregando}>
+                {carregando ? Array.from({ length: 6 }, (_, indice) => (
+                    <div className="cartao-esqueleto" key={indice} aria-hidden="true"><div /><span /></div>
+                )) : filmes.map((filme, indice) => (
+                    <CartaoConteudo
+                        key={filme.id}
+                        titulo={filme.title}
+                        poster={filme.poster_path}
+                        data={filme.release_date}
+                        nota={filme.vote_average}
+                        prioridade={indice < 6}
+                        onAbrir={() => abrirDetalhes(filme)}
+                    />
                 ))}
             </div>
 

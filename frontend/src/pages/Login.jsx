@@ -6,7 +6,7 @@ import {
     buscarPerfil
 } from '../services/authService';
 
-function Login({ onLogin, onCadastro }) {
+function Login({ onLogin, onCadastro, aviso }) {
     const [email, setEmail] = useState('');
     const [senha, setSenha] = useState('');
     const [mensagem, setMensagem] = useState('');
@@ -41,32 +41,31 @@ function Login({ onLogin, onCadastro }) {
 
     return (
         <section className="login">
-            <h2>Entrar na conta</h2>
+            <h1>Entrar</h1>
 
+            {aviso && <p className="mensagem" role="status">{aviso}</p>}
             <form className="login-form" onSubmit={entrar}>
-                <input
-                    type="email"
-                    placeholder="E-mail"
+                <label htmlFor="Login-email">E-mail</label>
+                <input type="email" id="Login-email" name="email" autoComplete="email" spellCheck={false}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
                 />
 
-                <input
-                    type="password"
-                    placeholder="Senha"
+                <label htmlFor="Login-senha">Senha</label>
+                <input type="password" id="Login-senha" name="senha" autoComplete="current-password"
                     value={senha}
                     onChange={(e) => setSenha(e.target.value)}
                     required
                 />
 
                 <button type="submit" disabled={carregando}>
-                    {carregando ? 'Entrando...' : 'Entrar'}
+                    {carregando ? 'Entrando…' : 'Entrar'}
                 </button>
             </form>
 
             {mensagem && (
-                <p className="mensagem-login">
+                <p className="erro" role="alert">
                     {mensagem}
                 </p>
             )}

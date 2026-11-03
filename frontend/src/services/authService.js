@@ -1,5 +1,5 @@
 
-const API_URL = 'http://localhost:3000/api';
+const API_URL = '/api';
 
 async function requisitar(endpoint, opcoes = {}) {
     let resposta;
@@ -18,7 +18,7 @@ async function requisitar(endpoint, opcoes = {}) {
     }
 
     const texto = await resposta.text();
-    let dados = null;
+    let dados;
 
     try {
         dados = texto ? JSON.parse(texto) : null;

@@ -1,5 +1,5 @@
 
-const API_URL = 'http://localhost:3000/api/series';
+const API_URL = '/api/series';
 
 async function requisitar(url) {
     let resposta;
@@ -83,7 +83,7 @@ export async function buscarEquipe(id) {
     return requisitar(`${API_URL}/${id}/equipe`);
 }
 
-const API_CATALOGO = 'http://localhost:3000/api/catalogo';
+const API_CATALOGO = '/api/catalogo';
 
 export async function listarSeriesCatalogo() {
     return requisitar(`${API_CATALOGO}?tipo=serie`);

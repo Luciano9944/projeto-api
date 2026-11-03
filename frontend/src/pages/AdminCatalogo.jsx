@@ -1,3 +1,4 @@
+import ResumoConteudoAdmin from '../components/ResumoConteudoAdmin';
 
 import { useEffect, useState } from 'react';
 
@@ -79,7 +80,15 @@ function AdminCatalogo() {
     }
 
     useEffect(() => {
-        carregarCatalogo();
+        let ativo = true;
+        listarCatalogo(filtroTipo)
+            .then(dados => {
+                if (!Array.isArray(dados)) throw new Error('A API retornou um formato inesperado.');
+                if (ativo) { setCatalogo(dados); setErroCatalogo(''); }
+            })
+            .catch(erro => { if (ativo) setErroCatalogo(erro.message); })
+            .finally(() => { if (ativo) setCarregandoCatalogo(false); });
+        return () => { ativo = false; };
     }, [filtroTipo]);
 
     async function handleSubmit(event) {
@@ -372,11 +381,11 @@ function AdminCatalogo() {
     }
 
     return (
-        <section>
-            <h2>Gerenciar catálogo</h2>
+        <section className="admin-catalogo">
+            <h1>Gerenciar catálogo</h1>
 
             <p>
-                Pesquise filmes e séries no TMDB para importar para o CineCatalog.
+                Pesquise filmes e séries no TMDB para importar para o CineMarvel.
             </p>
 
             <form onSubmit={handleSubmit}>
@@ -415,52 +424,26 @@ function AdminCatalogo() {
                 </button>
             </form>
 
-            {erro && <p>{erro}</p>}
-            {mensagem && <p>{mensagem}</p>}
+            {erro && <p className="erro" role="alert">{erro}</p>}
+            {mensagem && <p className="mensagem" role="status">{mensagem}</p>}
 
             {resultados.length > 0 && (
                 <div>
-                    <h3>Resultados encontrados</h3>
+                    <h2>Resultados encontrados</h2>
 
                     {resultados.map(item => (
-                        <article key={item.tmdb_id}>
-                            {item.poster_path && (
-                                <img
-                                    src={`https://image.tmdb.org/t/p/w185${item.poster_path}`}
-                                    alt={`Pôster de ${item.titulo}`}
-                                    width="100"
-                                />
-                            )}
-
-                            <h4>{item.titulo}</h4>
-
-                            <p>
-                                <strong>ID TMDB:</strong> {item.tmdb_id}
-                            </p>
-
-                            <p>
-                                <strong>Lançamento:</strong>{' '}
-                                {item.data_lancamento || 'Não informado'}
-                            </p>
-
-                            <p>
-                                <strong>Nota:</strong>{' '}
-                                {item.nota_media ?? 'Não informada'}
-                            </p>
-
-                            <p>
-                                {item.sinopse || 'Sinopse não disponível.'}
-                            </p>
-
-                            <button
-                                type="button"
-                                disabled={importando !== null}
-                                onClick={() => handleImportar(item)}
-                            >
-                                {importando === item.tmdb_id
-                                    ? 'Adicionando...'
-                                    : 'Adicionar ao catálogo'}
-                            </button>
+                        <article className="admin-item" key={item.tmdb_id}>
+                            <ResumoConteudoAdmin item={item}>
+                                <button
+                                    type="button"
+                                    disabled={importando !== null}
+                                    onClick={() => handleImportar(item)}
+                                >
+                                    {importando === item.tmdb_id
+                                        ? 'Adicionando...'
+                                        : 'Adicionar ao catálogo'}
+                                </button>
+                            </ResumoConteudoAdmin>
                         </article>
                     ))}
                 </div>
@@ -469,9 +452,9 @@ function AdminCatalogo() {
             <hr />
 
             <section>
-                <h3>Conteúdos cadastrados</h3>
+                <h2>Conteúdos cadastrados</h2>
 
-                <div>
+                <div className="admin-filtros">
                     <label htmlFor="filtroTipo">
                         Filtrar por tipo:
                     </label>
@@ -479,7 +462,7 @@ function AdminCatalogo() {
                     <select
                         id="filtroTipo"
                         value={filtroTipo}
-                        onChange={event => setFiltroTipo(event.target.value)}
+                        onChange={event => { setCarregandoCatalogo(true); setFiltroTipo(event.target.value); }}
                     >
                         <option value="">Todos</option>
                         <option value="filme">Filmes</option>
@@ -495,7 +478,7 @@ function AdminCatalogo() {
                     </button>
                 </div>
 
-                {erroCatalogo && <p>{erroCatalogo}</p>}
+                {erroCatalogo && <p className="erro" role="alert">{erroCatalogo}</p>}
 
                 {carregandoCatalogo ? (
                     <p>Carregando catálogo...</p>
@@ -504,83 +487,46 @@ function AdminCatalogo() {
                 ) : (
                     <div>
                         {catalogo.map(item => (
-                            <article key={item.id}>
-                                {item.poster_path && (
-                                    <img
-                                        src={`https://image.tmdb.org/t/p/w185${item.poster_path}`}
-                                        alt={`Pôster de ${item.titulo}`}
-                                        width="100"
-                                    />
-                                )}
-
-                                <h4>{item.titulo}</h4>
-
-                                <p>
-                                    <strong>ID no catálogo:</strong> {item.id}
-                                </p>
-
-                                <p>
-                                    <strong>Tipo:</strong>{' '}
-                                    {item.tipo_conteudo === 'filme'
-                                        ? 'Filme'
-                                        : 'Série'}
-                                </p>
-
-                                <p>
-                                    <strong>ID TMDB:</strong> {item.tmdb_id}
-                                </p>
-
-                                <p>
-                                    <strong>Lançamento:</strong>{' '}
-                                    {item.data_lancamento || 'Não informado'}
-                                </p>
-
-                                <p>
-                                    <strong>Nota:</strong>{' '}
-                                    {item.nota_media ?? 'Não informada'}
-                                </p>
-
-                                <p>
-                                    <strong>Status:</strong>{' '}
-                                    {item.ativo ? 'Ativo' : 'Inativo'}
-                                </p>
+                            <article className="admin-item" key={item.id}>
+                                <ResumoConteudoAdmin item={item} cadastrado>
+                                    <button
+                                        type="button"
+                                        onClick={() => abrirGerenciamentoMidias(item)}
+                                        disabled={carregandoMidias}
+                                    >
+                                        Gerenciar mídias
+                                    </button>
 
                                 <button
-                                    type="button"
-                                    onClick={() => abrirGerenciamentoMidias(item)}
-                                    disabled={carregandoMidias}
-                                >
-                                    Gerenciar mídias
-                                </button>
+                                        type="button"
+                                        onClick={() => iniciarEdicao(item)}
+                                        disabled={
+                                            editando !== null ||
+                                            desativando !== null
+                                        }
+                                    >
+                                        Editar
+                                    </button>
 
                                 <button
-                                    type="button"
-                                    onClick={() => iniciarEdicao(item)}
-                                    disabled={
-                                        editando !== null ||
-                                        desativando !== null
-                                    }
-                                >
-                                    Editar
-                                </button>
+                                        type="button"
+                                        onClick={() => handleDesativar(item)}
+                                        disabled={
+                                            salvando ||
+                                            editando !== null ||
+                                            desativando !== null
+                                        }
+                                    >
+                                        {desativando === item.id
+                                            ? 'Desativando...'
+                                            : 'Desativar'}
+                                    </button>
 
-                                <button
-                                    type="button"
-                                    onClick={() => handleDesativar(item)}
-                                    disabled={
-                                        salvando ||
-                                        editando !== null ||
-                                        desativando !== null
-                                    }
-                                >
-                                    {desativando === item.id
-                                        ? 'Desativando...'
-                                        : 'Desativar'}
-                                </button>
+                                </ResumoConteudoAdmin>
 
                                 {editando?.id === item.id && (
                                     <form onSubmit={handleSalvarEdicao}>
-                                        <h4>Editando conteúdo</h4>
+                                        <h3>Editando conteúdo</h3>
 
                                         <div>
                                             <label htmlFor="tituloEdicao">
@@ -703,9 +649,9 @@ function AdminCatalogo() {
                 <section>
                     <hr />
 
-                    <h3>
+                    <h2>
                         Gerenciar mídias: {conteudoSelecionado.titulo}
-                    </h3>
+                    </h2>
 
                     <p>
                         Tipo: {conteudoSelecionado.tipo_conteudo === 'filme'
@@ -720,11 +666,11 @@ function AdminCatalogo() {
                         Fechar gerenciamento
                     </button>
 
-                    <h4>
+                    <h3>
                         {midiaEditando !== null
                             ? 'Editar mídia'
                             : 'Cadastrar nova mídia'}
-                    </h4>
+                    </h3>
 
                     <form onSubmit={handleSalvarMidia}>
                         <div>
@@ -892,9 +838,9 @@ function AdminCatalogo() {
                         )}
                     </form>
 
-                    {erroMidias && <p>{erroMidias}</p>}
+                    {erroMidias && <p className="erro" role="alert">{erroMidias}</p>}
 
-                    <h4>Mídias cadastradas</h4>
+                    <h3>Mídias cadastradas</h3>
 
                     {carregandoMidias ? (
                         <p>Carregando mídias...</p>
@@ -904,7 +850,7 @@ function AdminCatalogo() {
                         <div>
                             {midias.map(midia => (
                                 <article key={midia.id}>
-                                    <h4>{midia.titulo}</h4>
+                                    <h3>{midia.titulo}</h3>
 
                                     <p>
                                         <strong>ID da mídia:</strong> {midia.id}

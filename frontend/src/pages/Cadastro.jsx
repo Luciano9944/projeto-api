@@ -47,48 +47,45 @@ function Cadastro({ aoCadastrar, aoVoltarLogin }) {
 
     return (
         <section className="cadastro">
-            <h2>Criar conta</h2>
+            <h1>Criar conta</h1>
 
             <form onSubmit={cadastrar}>
-                <input
-                    type="text"
-                    placeholder="Nome"
+                <label htmlFor="Cadastro-nome">Nome</label>
+                <input type="text" id="Cadastro-nome" name="nome" autoComplete="name" maxLength={100}
                     value={nome}
                     onChange={(e) => setNome(e.target.value)}
                     required
                 />
 
-                <input
-                    type="email"
-                    placeholder="E-mail"
+                <label htmlFor="Cadastro-email">E-mail</label>
+                <input type="email" id="Cadastro-email" name="email" autoComplete="email" spellCheck={false}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
                 />
 
-                <input
-                    type="password"
-                    placeholder="Senha"
+                <label htmlFor="Cadastro-senha">Senha</label>
+                <input type="password" id="Cadastro-senha" name="senha" autoComplete="new-password" minLength={8}
                     value={senha}
                     onChange={(e) => setSenha(e.target.value)}
                     required
                 />
 
-                <input
-                    type="password"
-                    placeholder="Confirme sua senha"
+                <p className="ajuda-campo">Use pelo menos 8 caracteres na senha.</p>
+                <label htmlFor="Cadastro-confirmar-senha">Confirme sua senha</label>
+                <input type="password" id="Cadastro-confirmar-senha" name="confirmar-senha" autoComplete="new-password"
                     value={confirmarSenha}
                     onChange={(e) => setConfirmarSenha(e.target.value)}
                     required
                 />
 
                 <button type="submit" disabled={carregando}>
-                    {carregando ? 'Cadastrando...' : 'Criar conta'}
+                    {carregando ? 'Cadastrando…' : 'Criar conta'}
                 </button>
             </form>
 
             {mensagem && (
-                <p>{mensagem}</p>
+                <p className="erro" role="alert">{mensagem}</p>
             )}
 
             <button

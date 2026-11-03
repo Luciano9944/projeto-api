@@ -1,5 +1,5 @@
-const API_URL = 'http://localhost:3000/api/admin/catalogo';
-const API_PUBLICA = 'http://localhost:3000/api/catalogo';
+const API_URL = '/api/admin/catalogo';
+const API_PUBLICA = '/api/catalogo';
 
 async function requisitar(url, opcoes = {}) {
     let resposta;

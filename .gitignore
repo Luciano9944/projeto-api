@@ -25,3 +25,8 @@ npm-debug.log*
 # Arquivos do sistema
 .DS_Store
 Thumbs.db
+
+# Ferramentas locais de desenvolvimento
+.agents/
+.codex/
+skills-lock.json

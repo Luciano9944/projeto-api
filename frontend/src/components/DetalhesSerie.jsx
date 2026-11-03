@@ -55,10 +55,12 @@ export default function DetalhesSerie({
     // Estados dos comentários.
     const [comentarios, setComentarios] = useState([]);
     const [novoComentario, setNovoComentario] = useState('');
+    const [enviandoComentario, setEnviandoComentario] = useState(false);
     const [comentarioEditando, setComentarioEditando] = useState(null);
     const [textoEdicao, setTextoEdicao] = useState('');
-    const [carregandoComentarios, setCarregandoComentarios] = useState(false);
+    const [carregandoComentarios, setCarregandoComentarios] = useState(true);
     const [erroComentario, setErroComentario] = useState('');
+    const [comentariosRestritos, setComentariosRestritos] = useState(false);
     const [mensagemComentario, setMensagemComentario] = useState('');
 
     // Carrega usuário, favorito e comentários da série.
@@ -80,10 +82,13 @@ export default function DetalhesSerie({
 
                 if (ativo) {
                     setComentarios(resultado.comentarios || []);
+                    setCarregandoComentarios(false);
                 }
             } catch (error) {
                 if (ativo) {
-                    setErroComentario(error.message);
+                    if (error.status === 401) setComentariosRestritos(true);
+                    else setErroComentario(error.message);
+                    setCarregandoComentarios(false);
                 }
             }
 
@@ -153,6 +158,7 @@ export default function DetalhesSerie({
 
     async function publicarComentario(event) {
         event.preventDefault();
+        if (enviandoComentario) return;
 
         if (!novoComentario.trim()) {
             setErroComentario('Digite um comentário antes de publicar.');
@@ -160,6 +166,7 @@ export default function DetalhesSerie({
         }
 
         try {
+            setEnviandoComentario(true);
             setErroComentario('');
             setMensagemComentario('');
 
@@ -175,6 +182,8 @@ export default function DetalhesSerie({
             await carregarComentarios();
         } catch (error) {
             setErroComentario(error.message);
+        } finally {
+            setEnviandoComentario(false);
         }
     }
 
@@ -350,10 +359,10 @@ export default function DetalhesSerie({
                 Voltar para a lista
             </button>
 
-            <h2>{nomeSerie}</h2>
+            <h1>{nomeSerie}</h1>
 
             {serie.poster_path && (
-                <img
+                <img width="300" height="450"
                     src={`${IMAGEM_BASE}${serie.poster_path}`}
                     alt={`Pôster de ${nomeSerie}`}
                     style={{
@@ -398,16 +407,16 @@ export default function DetalhesSerie({
             </p>
 
             {/* Favoritos */}
-            <h3>Favoritos</h3>
+            <h2>Favoritos</h2>
 
             {usuario ? (
                 <button
                     type="button"
-                    onClick={alternarFavorito}
+                    onClick={alternarFavorito} aria-pressed={favoritado}
                     disabled={carregandoFavorito}
                 >
                     {carregandoFavorito
-                        ? 'Aguarde...'
+                        ? 'Aguarde…'
                         : favoritado
                             ? 'Remover dos favoritos'
                             : 'Adicionar aos favoritos'}
@@ -417,18 +426,18 @@ export default function DetalhesSerie({
             )}
 
             {erro && (
-                <p className="erro">Erro: {erro}</p>
+                <p className="erro" role="alert">Erro: {erro}</p>
             )}
 
             {/* Comentários */}
             <section className="comentarios">
-                <h3>Comentários</h3>
+                <h2>Comentários</h2>
 
                 {usuario ? (
                     <form onSubmit={publicarComentario}>
                         <label>
                             Escreva seu comentário:
-                            <textarea
+                            <textarea aria-label="Comentário" name="comentario"
                                 value={novoComentario}
                                 onChange={event => setNovoComentario(event.target.value)}
                                 maxLength={3000}
@@ -439,35 +448,35 @@ export default function DetalhesSerie({
 
                         <p>{novoComentario.length}/3000 caracteres</p>
 
-                        <button type="submit">
-                            Publicar comentário
+                        <button type="submit" disabled={enviandoComentario}>
+                            {enviandoComentario ? 'Publicando…' : 'Publicar comentário'}
                         </button>
                     </form>
                 ) : (
-                    <p>Faça login para publicar comentários.</p>
+                    <p>{comentariosRestritos ? 'Entre na sua conta para ver e publicar comentários.' : 'Entre na sua conta para publicar comentários.'}</p>
                 )}
 
                 {erroComentario && (
-                    <p className="erro">{erroComentario}</p>
+                    <p className="erro" role="alert">{erroComentario}</p>
                 )}
 
                 {mensagemComentario && (
-                    <p>{mensagemComentario}</p>
+                    <p role="status">{mensagemComentario}</p>
                 )}
 
                 {carregandoComentarios ? (
-                    <p>Carregando comentários...</p>
+                    <p role="status">Carregando comentários…</p>
                 ) : comentarios.length > 0 ? (
                     comentarios.map(comentario => (
                         <article
                             className="comentario"
                             key={comentario.id}
                         >
-                            <h4>{comentario.nome_usuario}</h4>
+                            <h3>{comentario.nome_usuario}</h3>
 
                             {comentarioEditando === comentario.id ? (
                                 <>
-                                    <textarea
+                                    <textarea aria-label="Comentário" name="comentario"
                                         value={textoEdicao}
                                         onChange={event => setTextoEdicao(event.target.value)}
                                         maxLength={3000}
@@ -514,13 +523,13 @@ export default function DetalhesSerie({
                         </article>
                     ))
                 ) : (
-                    <p>Nenhum comentário publicado para esta série.</p>
+                    !comentariosRestritos && !erroComentario && <p>Nenhum comentário publicado para esta série.</p>
                 )}
             </section>
 
             {origemCatalogo ? (
                 <>
-                    <h3>Episódios disponíveis no site</h3>
+                    <h2>Episódios disponíveis no site</h2>
 
                     {temporadasCadastradas.length > 0 ? (
                         temporadasCadastradas.map(numeroTemporada => (
@@ -528,11 +537,11 @@ export default function DetalhesSerie({
                                 className="temporada-catalogo"
                                 key={numeroTemporada}
                             >
-                                <h4>
+                                <h3>
                                     {Number(numeroTemporada) === 0
                                         ? 'Especiais'
                                         : `Temporada ${numeroTemporada}`}
-                                </h4>
+                                </h3>
 
                                 {midiasPorTemporada[numeroTemporada].map(midia => (
                                     <article
@@ -561,7 +570,7 @@ export default function DetalhesSerie({
 
                     {midiaSelecionada && (
                         <div className="player-serie">
-                            <h3>{midiaSelecionada.titulo}</h3>
+                            <h2>{midiaSelecionada.titulo}</h2>
 
                             <iframe
                                 src={midiaSelecionada.embed_url}
@@ -576,7 +585,7 @@ export default function DetalhesSerie({
                 </>
             ) : (
                 <>
-                    <h3>Temporadas e episódios no TMDB</h3>
+                    <h2>Temporadas e episódios no TMDB</h2>
 
                     <label>
                         Temporada:{' '}
@@ -610,10 +619,10 @@ export default function DetalhesSerie({
 
                     {dadosTemporada && (
                         <div>
-                            <h4>
+                            <h3>
                                 {dadosTemporada.name ||
                                     `Temporada ${temporada}`}
-                            </h4>
+                            </h3>
 
                             <p>
                                 Episódios:{' '}
@@ -649,10 +658,10 @@ export default function DetalhesSerie({
 
                     {dadosEpisodio && (
                         <div>
-                            <h4>
+                            <h3>
                                 Episódio {dadosEpisodio.episode_number}:{' '}
                                 {dadosEpisodio.name}
-                            </h4>
+                            </h3>
 
                             <p>
                                 Exibição:{' '}
@@ -666,15 +675,15 @@ export default function DetalhesSerie({
                         </div>
                     )}
 
-                    <h3>Elenco e equipe</h3>
+                    <h2>Elenco e equipe</h2>
 
                     <button
                         type="button"
-                        onClick={carregarElenco}
+                        onClick={carregarElenco} aria-expanded={mostrarElenco}
                         disabled={carregandoElenco}
                     >
                         {carregandoElenco
-                            ? 'Carregando elenco...'
+                            ? 'Carregando elenco…'
                             : mostrarElenco
                                 ? 'Ocultar elenco'
                                 : 'Consultar elenco'}
@@ -682,11 +691,11 @@ export default function DetalhesSerie({
 
                     <button
                         type="button"
-                        onClick={carregarEquipe}
+                        onClick={carregarEquipe} aria-expanded={mostrarEquipe}
                         disabled={carregandoEquipe}
                     >
                         {carregandoEquipe
-                            ? 'Carregando equipe...'
+                            ? 'Carregando equipe…'
                             : mostrarEquipe
                                 ? 'Ocultar equipe técnica'
                                 : 'Consultar equipe técnica'}
@@ -694,16 +703,16 @@ export default function DetalhesSerie({
 
                     {mostrarElenco && (
                         <div className="elenco-serie">
-                            <h4>Elenco</h4>
+                            <h3>Elenco</h3>
 
                             {elenco.length > 0 ? (
                                 elenco.map((pessoa, index) => (
                                     <article key={`${pessoa.id}-${index}`}>
                                         {pessoa.foto && (
-                                            <img
+                                            <img width="80" height="110" loading="lazy"
                                                 src={`${FOTO_BASE}${pessoa.foto}`}
                                                 alt={pessoa.nome}
-                                                width="80"
+
                                             />
                                         )}
 
@@ -725,16 +734,16 @@ export default function DetalhesSerie({
 
                     {mostrarEquipe && (
                         <div className="equipe-serie">
-                            <h4>Equipe técnica</h4>
+                            <h3>Equipe técnica</h3>
 
                             {equipe.length > 0 ? (
                                 equipe.map((pessoa, index) => (
                                     <article key={`${pessoa.id}-${pessoa.funcao}-${index}`}>
                                         {pessoa.foto && (
-                                            <img
+                                            <img width="80" height="110" loading="lazy"
                                                 src={`${FOTO_BASE}${pessoa.foto}`}
                                                 alt={pessoa.nome}
-                                                width="80"
+
                                             />
                                         )}
 

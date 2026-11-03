@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 import FormularioFilme from './FormularioFilme';
 import BuscarFilme from './BuscarFilme';
@@ -18,12 +18,7 @@ function PainelOperacoes({
 
     const [operacao, setOperacao] = useState(null);
     
-    useEffect(() => {
-    if (filmeParaEditar) {
-        setOperacao('atualizar');
-    }
 
-}, [filmeParaEditar]);
 
     if (filmeParaEditar && operacao !== 'atualizar') {
         setOperacao('atualizar');

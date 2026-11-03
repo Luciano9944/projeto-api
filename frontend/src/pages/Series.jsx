@@ -1,3 +1,5 @@
+import BarraCatalogo from '../components/BarraCatalogo';
+import CartaoConteudo from '../components/CartaoConteudo';
 
 import { useEffect, useState } from 'react';
 
@@ -11,7 +13,6 @@ import {
 
 import DetalhesSerie from '../components/DetalhesSerie';
 
-const IMAGENS = 'https://image.tmdb.org/t/p/w500';
 
 export default function Series({ categoriaInicial = 'populares' }) {
     const [series, setSeries] = useState([]);
@@ -25,7 +26,7 @@ export default function Series({ categoriaInicial = 'populares' }) {
     const [midiasSerie, setMidiasSerie] = useState([]);
     const [origemCatalogo, setOrigemCatalogo] = useState(false);
 
-    const [carregando, setCarregando] = useState(false);
+    const [carregando, setCarregando] = useState(true);
     const [erro, setErro] = useState('');
 
     useEffect(() => {
@@ -112,6 +113,7 @@ export default function Series({ categoriaInicial = 'populares' }) {
     }
 
     function mudarCategoria(novaCategoria) {
+        setConsulta('');
         setCategoria(novaCategoria);
         setPagina(1);
         setSerie(null);
@@ -153,6 +155,7 @@ export default function Series({ categoriaInicial = 'populares' }) {
     if (serie) {
         return (
             <DetalhesSerie
+                key={serie.id}
                 serie={serie}
                 midias={midiasSerie}
                 origemCatalogo={origemCatalogo}
@@ -163,108 +166,36 @@ export default function Series({ categoriaInicial = 'populares' }) {
 
     return (
         <section className="catalogo">
-            <nav className="categorias-series">
-                <button
-                    type="button"
-                    className={categoria === 'populares' ? 'ativo' : ''}
-                    onClick={() => mudarCategoria('populares')}
-                >
-                    Séries populares
-                </button>
+            <BarraCatalogo
+                tipo="series"
+                categoria={categoria}
+                consultaAtiva={consultaAtiva}
+                consulta={consulta}
+                onConsulta={setConsulta}
+                onPesquisar={pesquisar}
+                onCategoria={mudarCategoria}
+            />
 
-                <button
-                    type="button"
-                    className={categoria === 'marvel' ? 'ativo' : ''}
-                    onClick={() => mudarCategoria('marvel')}
-                >
-                    Séries Marvel
-                </button>
-
-                <button
-                    type="button"
-                    className={categoria === 'catalogo' ? 'ativo' : ''}
-                    onClick={() => mudarCategoria('catalogo')}
-                >
-                    Disponíveis no site
-                </button>
-            </nav>
-
-            <form className="formulario-busca" onSubmit={pesquisar}>
-                <input
-                    type="text"
-                    value={consulta}
-                    onChange={event => setConsulta(event.target.value)}
-                    placeholder="Buscar série pelo nome..."
-                />
-
-                <button type="submit">Pesquisar</button>
-            </form>
-
-            <h2>
-                {categoria === 'marvel'
-                    ? 'Séries Marvel'
-                    : categoria === 'busca'
-                        ? `Resultados para "${consultaAtiva}"`
-                        : categoria === 'catalogo'
-                            ? 'Disponíveis no site'
-                            : 'Séries populares'}
-            </h2>
-
-            {erro && <p className="erro">Erro: {erro}</p>}
-            {carregando && <p>Carregando séries...</p>}
+            {erro && <p className="erro" role="alert">Erro: {erro}</p>}
+            {carregando && <p className="sr-only" role="status">Carregando séries…</p>}
 
             {!carregando && !erro && series.length === 0 && (
-                <p>Nenhuma série encontrada.</p>
+                <p>Nenhuma série encontrada. Tente outro título ou explore as categorias.</p>
             )}
 
-            <div className="grade-filmes">
-                {series.map(item => (
-                    <article className="cartao-filme" key={item.id}>
-                        {item.poster_path ? (
-                            <button
-                                type="button"
-                                className="filme-clicavel"
-                                onClick={() => abrirSerie(item)}
-                                aria-label={`Ver detalhes de ${item.name || item.original_name}`}
-                            >
-                                <img
-                                    src={`${IMAGENS}${item.poster_path}`}
-                                    alt={`Pôster de ${item.name || item.original_name}`}
-                                    loading="lazy"
-                                />
-                            </button>
-                        ) : (
-                            <button
-                                type="button"
-                                className="filme-clicavel poster-indisponivel"
-                                onClick={() => abrirSerie(item)}
-                            >
-                                Pôster indisponível
-                            </button>
-                        )}
-
-                        <div className="informacoes-filme">
-                            <h3>
-                                <button
-                                    type="button"
-                                    className="filme-titulo-clicavel"
-                                    onClick={() => abrirSerie(item)}
-                                >
-                                    {item.name || item.original_name}
-                                </button>
-                            </h3>
-
-                            <p>
-                                Ano: {item.first_air_date
-                                    ? item.first_air_date.slice(0, 4)
-                                    : 'Não informado'}
-                            </p>
-
-                            <p>
-                                Nota: {Number(item.vote_average || 0).toFixed(1)}
-                            </p>
-                        </div>
-                    </article>
+            <div className="grade-filmes" aria-busy={carregando}>
+                {carregando ? Array.from({ length: 6 }, (_, indice) => (
+                    <div className="cartao-esqueleto" key={indice} aria-hidden="true"><div /><span /></div>
+                )) : series.map((item, indice) => (
+                    <CartaoConteudo
+                        key={item.id}
+                        titulo={item.name || item.original_name}
+                        poster={item.poster_path}
+                        data={item.first_air_date}
+                        nota={item.vote_average}
+                        prioridade={indice < 6}
+                        onAbrir={() => abrirSerie(item)}
+                    />
                 ))}
             </div>
 

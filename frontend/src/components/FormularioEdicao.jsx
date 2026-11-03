@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { atualizarFilme } from '../services/filmeService';
 
 function FormularioEdicao({ filmeSelecionado, aoAtualizar }) {
@@ -8,7 +8,9 @@ function FormularioEdicao({ filmeSelecionado, aoAtualizar }) {
     const [ano, setAno] = useState('');
     const [mensagem, setMensagem] = useState('');
 
-    useEffect(() => {
+    const [selecaoAnterior, setSelecaoAnterior] = useState(null);
+    if (filmeSelecionado !== selecaoAnterior) {
+        setSelecaoAnterior(filmeSelecionado);
 
         if (filmeSelecionado) {
             setId(filmeSelecionado.id);
@@ -17,7 +19,7 @@ function FormularioEdicao({ filmeSelecionado, aoAtualizar }) {
             setMensagem('');
         }
 
-    }, [filmeSelecionado]);
+    }
 
     async function enviar(e) {
         e.preventDefault();
