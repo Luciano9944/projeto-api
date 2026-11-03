@@ -137,9 +137,11 @@ export default function Series({ categoriaInicial = 'populares' }) {
             const resultado = await buscarPorId(item.id);
             setSerie(resultado);
         } catch (error) {
-            setErro(error.message);
-            setMidiasSerie([]);
-            setOrigemCatalogo(false);
+            if (veioDoCatalogo) {
+                setSerie(item);
+            } else {
+                setErro(error.message);
+            }
         } finally {
             setCarregando(false);
         }

@@ -46,6 +46,7 @@ export default function DetalhesSerie({
 
     const [carregando, setCarregando] = useState(false);
     const [erro, setErro] = useState('');
+    const [erroCreditos, setErroCreditos] = useState('');
 
     // Estados de autenticação e favoritos.
     const [usuario, setUsuario] = useState(null);
@@ -289,14 +290,14 @@ export default function DetalhesSerie({
         }
 
         setCarregandoElenco(true);
-        setErro('');
+        setErroCreditos('');
 
         try {
             const resultado = await buscarElenco(serie.id);
             setElenco(resultado.elenco || []);
             setMostrarElenco(true);
         } catch (error) {
-            setErro(error.message);
+            setErroCreditos(error.message);
         } finally {
             setCarregandoElenco(false);
         }
@@ -314,14 +315,14 @@ export default function DetalhesSerie({
         }
 
         setCarregandoEquipe(true);
-        setErro('');
+        setErroCreditos('');
 
         try {
             const resultado = await buscarEquipe(serie.id);
             setEquipe(resultado.equipe || []);
             setMostrarEquipe(true);
         } catch (error) {
-            setErro(error.message);
+            setErroCreditos(error.message);
         } finally {
             setCarregandoEquipe(false);
         }
@@ -350,8 +351,7 @@ export default function DetalhesSerie({
     const nomeSerie = serie?.nome || serie?.name || serie?.original_name;
     const sinopse = serie?.sinopse || serie?.overview;
 
-    const numeroTemporadas =
-        serie?.temporadas ?? serie?.number_of_seasons ?? 0;
+    const numeroTemporadas = serie?.temporadas ?? serie?.number_of_seasons;
 
     return (
         <section className="detalhes-serie">
@@ -390,7 +390,7 @@ export default function DetalhesSerie({
                     'Não informada'}
             </p>
 
-            <p>Temporadas: {numeroTemporadas}</p>
+            <p>Temporadas: {numeroTemporadas ?? 'Não informado'}</p>
 
             <p>
                 Episódios:{' '}
@@ -425,8 +425,267 @@ export default function DetalhesSerie({
                 <p>Faça login para adicionar esta série aos favoritos.</p>
             )}
 
-            {erro && (
-                <p className="erro" role="alert">Erro: {erro}</p>
+            {origemCatalogo ? (
+                <section className="painel-serie" aria-labelledby="episodios-site">
+                    <h2 id="episodios-site">Episódios disponíveis no site</h2>
+
+                    {temporadasCadastradas.length > 0 ? (
+                        temporadasCadastradas.map(numeroTemporada => (
+                            <div
+                                className="temporada-catalogo"
+                                key={numeroTemporada}
+                            >
+                                <h3>
+                                    {Number(numeroTemporada) === 0
+                                        ? 'Especiais'
+                                        : `Temporada ${numeroTemporada}`}
+                                </h3>
+
+                                {midiasPorTemporada[numeroTemporada].slice()
+                                    .sort((a, b) => Number(a.episodio) - Number(b.episodio))
+                                    .map(midia => (
+                                        <article
+                                            className="midia-serie"
+                                            key={midia.id}
+                                        >
+                                            <button
+                                                type="button"
+                                                className="episodio-site"
+                                                aria-expanded={midiaSelecionada?.id === midia.id}
+                                                onClick={() => setMidiaSelecionada(atual => atual?.id === midia.id ? null : midia)}
+                                            >
+                                                <span className="numero-episodio">Ep. {midia.episodio}</span>
+                                                <span className="episodio-site-texto">
+                                                    <strong>{midia.titulo}</strong>
+                                                    {midia.descricao && <span>{midia.descricao}</span>}
+                                                </span>
+                                                <span className="episodio-site-acao">
+                                                    {midiaSelecionada?.id === midia.id ? 'Fechar' : 'Assistir'}
+                                                </span>
+                                            </button>
+
+                                            {midiaSelecionada?.id === midia.id && (
+                                                <div className="player-serie">
+                                                    <iframe
+                                                        src={midia.embed_url}
+                                                        title={midia.titulo}
+                                                        width="100%"
+                                                        height="480"
+                                                        allow="autoplay; encrypted-media"
+                                                        allowFullScreen
+                                                    />
+                                                </div>
+                                            )}
+                                        </article>
+                                    ))}
+                            </div>
+                        ))
+                    ) : (
+                        <p>
+                            Nenhum episódio cadastrado no site para esta série.
+                        </p>
+                    )}
+                </section>
+            ) : (
+                <>
+                    <section className="painel-serie" aria-labelledby="episodios-tmdb">
+                        <h2 id="episodios-tmdb">Temporadas e episódios no TMDB</h2>
+
+                        <div className="consultas-serie">
+                            <div className="consulta-serie">
+                                <label>
+                                    Temporada:{' '}
+                                    <select
+                                        value={temporada}
+                                        onChange={event => {
+                                            setTemporada(event.target.value);
+                                            setDadosTemporada(null);
+                                            setDadosEpisodio(null);
+                                        }}
+                                    >
+                                        {Array.from(
+                                            { length: (numeroTemporadas ?? 0) + 1 },
+                                            (_, index) => index
+                                        ).map(numero => (
+                                            <option key={numero} value={numero}>
+                                                {numero === 0
+                                                    ? 'Especial (0)'
+                                                    : `Temporada ${numero}`}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </label>
+
+                                <button
+                                    onClick={carregarTemporada}
+                                    disabled={carregando}
+                                >
+                                    Consultar temporada
+                                </button>
+                            </div>
+
+                            <div className="consulta-serie">
+                                <label>
+                                    Número do episódio:{' '}
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        value={episodio}
+                                        onChange={event => setEpisodio(event.target.value)}
+                                    />
+                                </label>
+                                <button
+                                    type="button"
+                                    onClick={carregarEpisodio}
+                                    disabled={carregando || !Number.isInteger(Number(episodio)) || Number(episodio) < 1}
+                                >
+                                    Consultar episódio
+                                </button>
+                            </div>
+                        </div>
+                        {carregando && <p role="status">Consultando o TMDB…</p>}
+                        {erro && <p className="erro" role="alert">{erro}</p>}
+
+                        {dadosTemporada && (
+                            <div className="resultado-serie">
+                                <h3>
+                                    {dadosTemporada.name ||
+                                        `Temporada ${temporada}`}
+                                </h3>
+
+                                <p>
+                                    Episódios:{' '}
+                                    {dadosTemporada.episodes?.length ?? 0}
+                                </p>
+
+                                <ul className="lista-episodios-tmdb">
+                                    {(dadosTemporada.episodes || []).map(item => (
+                                        <li key={item.id}>
+                                            <span className="numero-episodio">Ep. {item.episode_number}</span>
+                                            <span>{item.name}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+
+                        {dadosEpisodio && (
+                            <div className="resultado-serie">
+                                <h3>
+                                    Episódio {dadosEpisodio.episode_number}:{' '}
+                                    {dadosEpisodio.name}
+                                </h3>
+
+                                <p>
+                                    Exibição:{' '}
+                                    {dadosEpisodio.air_date || 'Não informada'}
+                                </p>
+
+                                <p>
+                                    {dadosEpisodio.overview ||
+                                        'Sinopse não disponível.'}
+                                </p>
+                            </div>
+                        )}
+                    </section>
+
+                    <section className="painel-serie" aria-labelledby="creditos-serie">
+                        <h2 id="creditos-serie">Elenco e equipe</h2>
+
+                        <div className="acoes-comentario">
+                            <button
+                                type="button"
+                                onClick={carregarElenco} aria-expanded={mostrarElenco}
+                                disabled={carregandoElenco}
+                            >
+                                {carregandoElenco
+                                    ? 'Carregando elenco…'
+                                    : mostrarElenco
+                                        ? 'Ocultar elenco'
+                                        : 'Consultar elenco'}
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={carregarEquipe} aria-expanded={mostrarEquipe}
+                                disabled={carregandoEquipe}
+                            >
+                                {carregandoEquipe
+                                    ? 'Carregando equipe…'
+                                    : mostrarEquipe
+                                        ? 'Ocultar equipe técnica'
+                                        : 'Consultar equipe técnica'}
+                            </button>
+
+                        </div>
+                        {erroCreditos && <p className="erro" role="alert">{erroCreditos}</p>}
+
+                        {mostrarElenco && (
+                            <div className="elenco-serie">
+                                <h3>Elenco</h3>
+
+                                {elenco.length > 0 ? (
+                                    elenco.map((pessoa, index) => (
+                                        <article key={`${pessoa.id}-${index}`}>
+                                            {pessoa.foto && (
+                                                <img width="80" height="110" loading="lazy"
+                                                    src={`${FOTO_BASE}${pessoa.foto}`}
+                                                    alt={pessoa.nome}
+
+                                                />
+                                            )}
+
+                                            <p>
+                                                <strong>{pessoa.nome}</strong>
+                                            </p>
+
+                                            <p>
+                                                Personagem:{' '}
+                                                {pessoa.personagem || 'Não informado'}
+                                            </p>
+                                        </article>
+                                    ))
+                                ) : (
+                                    <p>Nenhuma informação de elenco disponível.</p>
+                                )}
+                            </div>
+                        )}
+
+                        {mostrarEquipe && (
+                            <div className="equipe-serie">
+                                <h3>Equipe técnica</h3>
+
+                                {equipe.length > 0 ? (
+                                    equipe.map((pessoa, index) => (
+                                        <article key={`${pessoa.id}-${pessoa.funcao}-${index}`}>
+                                            {pessoa.foto && (
+                                                <img width="80" height="110" loading="lazy"
+                                                    src={`${FOTO_BASE}${pessoa.foto}`}
+                                                    alt={pessoa.nome}
+
+                                                />
+                                            )}
+
+                                            <p>
+                                                <strong>{pessoa.nome}</strong>
+                                            </p>
+
+                                            <p>
+                                                Função: {pessoa.funcao || 'Não informada'}
+                                            </p>
+
+                                            <p>
+                                                Departamento: {pessoa.departamento || 'Não informado'}
+                                            </p>
+                                        </article>
+                                    ))
+                                ) : (
+                                    <p>Nenhuma informação de equipe técnica disponível.</p>
+                                )}
+                            </div>
+                        )}
+                    </section>
+                </>
             )}
 
             {/* Comentários */}
@@ -446,11 +705,12 @@ export default function DetalhesSerie({
                             />
                         </label>
 
-                        <p>{novoComentario.length}/3000 caracteres</p>
-
-                        <button type="submit" disabled={enviandoComentario}>
-                            {enviandoComentario ? 'Publicando…' : 'Publicar comentário'}
-                        </button>
+                        <div className="acoes-comentario">
+                            <button type="submit" disabled={enviandoComentario}>
+                                {enviandoComentario ? 'Publicando…' : 'Publicar comentário'}
+                            </button>
+                            <small>{novoComentario.length}/3000</small>
+                        </div>
                     </form>
                 ) : (
                     <p>{comentariosRestritos ? 'Entre na sua conta para ver e publicar comentários.' : 'Entre na sua conta para publicar comentários.'}</p>
@@ -483,19 +743,21 @@ export default function DetalhesSerie({
                                         rows={4}
                                     />
 
-                                    <button
-                                        type="button"
-                                        onClick={() => salvarEdicao(comentario.id)}
-                                    >
-                                        Salvar edição
-                                    </button>
+                                    <div className="acoes-comentario">
+                                        <button
+                                            type="button"
+                                            onClick={() => salvarEdicao(comentario.id)}
+                                        >
+                                            Salvar edição
+                                        </button>
 
-                                    <button
-                                        type="button"
-                                        onClick={() => setComentarioEditando(null)}
-                                    >
-                                        Cancelar
-                                    </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setComentarioEditando(null)}
+                                        >
+                                            Cancelar
+                                        </button>
+                                    </div>
                                 </>
                             ) : (
                                 <p>{comentario.texto}</p>
@@ -504,7 +766,7 @@ export default function DetalhesSerie({
                             {usuario &&
                                 String(usuario.id) === String(comentario.usuario_id) &&
                                 comentarioEditando !== comentario.id && (
-                                    <div>
+                                    <div className="acoes-comentario">
                                         <button
                                             type="button"
                                             onClick={() => iniciarEdicao(comentario)}
@@ -526,247 +788,6 @@ export default function DetalhesSerie({
                     !comentariosRestritos && !erroComentario && <p>Nenhum comentário publicado para esta série.</p>
                 )}
             </section>
-
-            {origemCatalogo ? (
-                <>
-                    <h2>Episódios disponíveis no site</h2>
-
-                    {temporadasCadastradas.length > 0 ? (
-                        temporadasCadastradas.map(numeroTemporada => (
-                            <div
-                                className="temporada-catalogo"
-                                key={numeroTemporada}
-                            >
-                                <h3>
-                                    {Number(numeroTemporada) === 0
-                                        ? 'Especiais'
-                                        : `Temporada ${numeroTemporada}`}
-                                </h3>
-
-                                {midiasPorTemporada[numeroTemporada].map(midia => (
-                                    <article
-                                        className="midia-serie"
-                                        key={midia.id}
-                                    >
-                                        <button
-                                            type="button"
-                                            onClick={() => setMidiaSelecionada(midia)}
-                                        >
-                                            Episódio {midia.episodio}: {midia.titulo}
-                                        </button>
-
-                                        {midia.descricao && (
-                                            <p>{midia.descricao}</p>
-                                        )}
-                                    </article>
-                                ))}
-                            </div>
-                        ))
-                    ) : (
-                        <p>
-                            Nenhum episódio cadastrado no site para esta série.
-                        </p>
-                    )}
-
-                    {midiaSelecionada && (
-                        <div className="player-serie">
-                            <h2>{midiaSelecionada.titulo}</h2>
-
-                            <iframe
-                                src={midiaSelecionada.embed_url}
-                                title={midiaSelecionada.titulo}
-                                width="100%"
-                                height="480"
-                                allow="autoplay; encrypted-media"
-                                allowFullScreen
-                            />
-                        </div>
-                    )}
-                </>
-            ) : (
-                <>
-                    <h2>Temporadas e episódios no TMDB</h2>
-
-                    <label>
-                        Temporada:{' '}
-                        <select
-                            value={temporada}
-                            onChange={event => {
-                                setTemporada(event.target.value);
-                                setDadosTemporada(null);
-                                setDadosEpisodio(null);
-                            }}
-                        >
-                            {Array.from(
-                                { length: numeroTemporadas + 1 },
-                                (_, index) => index
-                            ).map(numero => (
-                                <option key={numero} value={numero}>
-                                    {numero === 0
-                                        ? 'Especial (0)'
-                                        : `Temporada ${numero}`}
-                                </option>
-                            ))}
-                        </select>
-                    </label>
-
-                    <button
-                        onClick={carregarTemporada}
-                        disabled={carregando}
-                    >
-                        Consultar temporada
-                    </button>
-
-                    {dadosTemporada && (
-                        <div>
-                            <h3>
-                                {dadosTemporada.name ||
-                                    `Temporada ${temporada}`}
-                            </h3>
-
-                            <p>
-                                Episódios:{' '}
-                                {dadosTemporada.episodes?.length ?? 0}
-                            </p>
-
-                            <ul>
-                                {(dadosTemporada.episodes || []).map(item => (
-                                    <li key={item.id}>
-                                        Episódio {item.episode_number}: {item.name}
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
-
-                    <label>
-                        Número do episódio:{' '}
-                        <input
-                            type="number"
-                            min="1"
-                            value={episodio}
-                            onChange={event => setEpisodio(event.target.value)}
-                        />
-                    </label>
-
-                    <button
-                        onClick={carregarEpisodio}
-                        disabled={carregando || Number(episodio) < 1}
-                    >
-                        Consultar episódio
-                    </button>
-
-                    {dadosEpisodio && (
-                        <div>
-                            <h3>
-                                Episódio {dadosEpisodio.episode_number}:{' '}
-                                {dadosEpisodio.name}
-                            </h3>
-
-                            <p>
-                                Exibição:{' '}
-                                {dadosEpisodio.air_date || 'Não informada'}
-                            </p>
-
-                            <p>
-                                {dadosEpisodio.overview ||
-                                    'Sinopse não disponível.'}
-                            </p>
-                        </div>
-                    )}
-
-                    <h2>Elenco e equipe</h2>
-
-                    <button
-                        type="button"
-                        onClick={carregarElenco} aria-expanded={mostrarElenco}
-                        disabled={carregandoElenco}
-                    >
-                        {carregandoElenco
-                            ? 'Carregando elenco…'
-                            : mostrarElenco
-                                ? 'Ocultar elenco'
-                                : 'Consultar elenco'}
-                    </button>
-
-                    <button
-                        type="button"
-                        onClick={carregarEquipe} aria-expanded={mostrarEquipe}
-                        disabled={carregandoEquipe}
-                    >
-                        {carregandoEquipe
-                            ? 'Carregando equipe…'
-                            : mostrarEquipe
-                                ? 'Ocultar equipe técnica'
-                                : 'Consultar equipe técnica'}
-                    </button>
-
-                    {mostrarElenco && (
-                        <div className="elenco-serie">
-                            <h3>Elenco</h3>
-
-                            {elenco.length > 0 ? (
-                                elenco.map((pessoa, index) => (
-                                    <article key={`${pessoa.id}-${index}`}>
-                                        {pessoa.foto && (
-                                            <img width="80" height="110" loading="lazy"
-                                                src={`${FOTO_BASE}${pessoa.foto}`}
-                                                alt={pessoa.nome}
-
-                                            />
-                                        )}
-
-                                        <p>
-                                            <strong>{pessoa.nome}</strong>
-                                        </p>
-
-                                        <p>
-                                            Personagem:{' '}
-                                            {pessoa.personagem || 'Não informado'}
-                                        </p>
-                                    </article>
-                                ))
-                            ) : (
-                                <p>Nenhuma informação de elenco disponível.</p>
-                            )}
-                        </div>
-                    )}
-
-                    {mostrarEquipe && (
-                        <div className="equipe-serie">
-                            <h3>Equipe técnica</h3>
-
-                            {equipe.length > 0 ? (
-                                equipe.map((pessoa, index) => (
-                                    <article key={`${pessoa.id}-${pessoa.funcao}-${index}`}>
-                                        {pessoa.foto && (
-                                            <img width="80" height="110" loading="lazy"
-                                                src={`${FOTO_BASE}${pessoa.foto}`}
-                                                alt={pessoa.nome}
-
-                                            />
-                                        )}
-
-                                        <p>
-                                            <strong>{pessoa.nome}</strong>
-                                        </p>
-
-                                        <p>
-                                            Função: {pessoa.funcao || 'Não informada'}
-                                        </p>
-
-                                        <p>
-                                            Departamento: {pessoa.departamento || 'Não informado'}
-                                        </p>
-                                    </article>
-                                ))
-                            ) : (
-                                <p>Nenhuma informação de equipe técnica disponível.</p>
-                            )}
-                        </div>
-                    )}
-                </>
-            )}
         </section>
     );
 }

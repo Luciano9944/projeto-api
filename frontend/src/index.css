@@ -812,6 +812,167 @@ iframe {
     margin-top:0;
 }
 
+.painel-serie {
+    margin-block:28px;
+    padding:clamp(16px, 3vw, 28px);
+    border:1px solid var(--borda);
+    border-radius:6px;
+    background:var(--superficie);
+}
+
+.painel-serie > h2,
+.resultado-serie > h3,
+.temporada-catalogo > h3,
+.detalhes-serie > .comentarios > h2 {
+    margin:0 0 16px;
+}
+
+.consultas-serie {
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
+    gap:12px;
+}
+
+.consulta-serie {
+    display:flex;
+    flex-wrap:wrap;
+    align-items:flex-end;
+    gap:10px;
+    padding:12px;
+    background:var(--fundo);
+    border-radius:4px;
+}
+
+.consulta-serie label {
+    display:grid;
+    flex:1 1 9rem;
+    gap:5px;
+    margin:0;
+}
+
+.consulta-serie :is(select,input) {
+    width:100%;
+    margin:0;
+}
+
+.resultado-serie {
+    margin-top:18px;
+    border-top:1px solid var(--borda);
+    padding-top:16px;
+}
+
+.lista-episodios-tmdb {
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+    gap:8px;
+    list-style:none;
+    padding:0;
+    margin:0;
+}
+
+.lista-episodios-tmdb li,
+.episodio-site {
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:10px 12px;
+    background:var(--fundo);
+    overflow-wrap:anywhere;
+}
+
+.numero-episodio {
+    flex:none;
+    color:var(--destaque);
+    font-size:.85rem;
+    font-weight:700;
+}
+
+.temporada-catalogo {
+    margin-top:18px;
+    padding-top:16px;
+}
+
+.midia-serie + .midia-serie {
+    margin-top:8px;
+}
+
+.episodio-site {
+    width:100%;
+    text-align:left;
+}
+
+.episodio-site[aria-expanded="true"] {
+    border-color:var(--destaque);
+}
+
+.episodio-site-texto {
+    display:grid;
+    flex:1;
+    min-width:0;
+    gap:3px;
+}
+
+.episodio-site-texto > span {
+    font-size:.875rem;
+}
+
+.episodio-site-acao {
+    flex:none;
+    font-size:.875rem;
+    font-weight:700;
+}
+
+.midia-serie .player-serie {
+    border:0;
+    padding:0;
+    margin:8px 0 14px;
+}
+
+.detalhes-serie > .comentarios {
+    margin-top:28px;
+    padding-top:20px;
+}
+
+.detalhes-serie .comentario {
+    padding:12px 0;
+    margin:0;
+    border:0;
+    border-bottom:1px solid var(--borda);
+    border-radius:0;
+    background:transparent;
+    overflow-wrap:anywhere;
+}
+
+.detalhes-serie .comentario > h3 {
+    font-size:1rem;
+    margin:0 0 4px;
+}
+
+.detalhes-serie .comentario > p {
+    margin:0;
+}
+
+.detalhes-serie .comentarios textarea {
+    display:block;
+    width:100%;
+    margin:6px 0;
+}
+
+.acoes-comentario {
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:8px;
+}
+
+.acoes-comentario button + button {
+    margin-left:0;
+}
+
+.comentario .acoes-comentario {
+    margin-top:8px;
+}
+
 #acervo {
     scroll-margin-top:24px;
 }
