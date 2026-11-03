@@ -30,3 +30,7 @@ Thumbs.db
 .agents/
 .codex/
 skills-lock.json
+
+# Evidências geradas localmente pelo Cypress
+evidencias-cypress/
+entrega-cypress.zip
