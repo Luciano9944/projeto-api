@@ -13,6 +13,7 @@ __pycache__/
 
 # Build do frontend
 frontend/dist/
+.vercel/
 
 # Banco de dados e sessões locais
 database/*.db
