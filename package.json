@@ -1,7 +1,7 @@
 {
   "name": "projeto-api",
   "version": "1.0.0",
-  "description": "CineCatalog - API de filmes e séries com Node.js, Express e TMDB",
+  "description": "CineMarvel - API de filmes e séries com Node.js, Express e TMDB",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

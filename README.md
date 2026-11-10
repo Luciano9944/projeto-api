@@ -32,7 +32,7 @@ No fluxo de catálogo, a rota seleciona o controller, o service valida os dados 
 - `src/routes/`, `src/controllers/`, `src/services/` e `src/repositories/` separam roteamento, resposta, regras e acesso a dados.
 - `src/middlewares/` aplica autorização, limite de requisições e tratamento de erros.
 - `src/config/` configura PostgreSQL e TMDB. `database/schema.sql` contém a estrutura inicial do banco.
-- `server.js` inicia o backend local. `api/index.js` exporta o app para a Vercel.
+- `server.js` inicia o backend local. `src/index.js` exporta o app Express para a Vercel.
 
 ### Dados e sessão
 
@@ -151,8 +151,8 @@ Outros casos demonstráveis incluem `400` por dados inválidos, `403` por falta 
 
 A aplicação publicada usa dois projetos. Para publicar esta revisão com essa estrutura:
 
-1. No projeto da API, use a raiz do repositório e o [vercel.json](vercel.json) da raiz. Em **Production**, configure `DATABASE_URL_POOLED`, `SESSION_SECRET`, `TMDB_BEARER_TOKEN` e `FRONTEND_URL=https://cinemarvel-frontend.vercel.app`. O app Express é exportado por `api/index.js`.
-2. No projeto de interface, use `frontend` como **Root Directory** e o preset Vite. O [frontend/vercel.json](frontend/vercel.json) encaminha as chamadas relativas `/api/*` para a API publicada. Assim o navegador pode usar a sessão no próprio domínio da interface.
+1. No projeto da API, use a raiz do repositório. A Vercel detecta o Express e carrega `src/index.js`. Em **Production**, configure `DATABASE_URL_POOLED`, `SESSION_SECRET`, `TMDB_BEARER_TOKEN` e `FRONTEND_URL=https://cinemarvel-frontend.vercel.app`.
+2. No projeto de interface, use `frontend` como **Root Directory** e o preset Vite. Se `VITE_API_URL` estiver configurada, o frontend usa essa URL como base, incluindo o sufixo `/api`. Sem essa variável, o [frontend/vercel.json](frontend/vercel.json) encaminha as chamadas relativas `/api/*` para a API publicada pelo domínio da interface.
 3. Após publicar os dois projetos, confira a interface, `/api/catalogo` e o login após recarregar a página. Use os logs da Vercel para diagnosticar falhas de ambiente.
 
 ## Contas de demonstração

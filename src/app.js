@@ -1,4 +1,3 @@
-
 require('dotenv').config();
 
 const express = require('express');
@@ -20,13 +19,15 @@ const comentarioRoutes = require('./routes/comentarioRoutes');
 const perfilRoutes = require('./routes/perfilRoutes');
 
 const { limiteGeral } = require('./middlewares/limitaRequisicoes');
-
 const {
     rotaNaoEncontrada,
     trataErro
 } = require('./middlewares/trataErro');
 
 const app = express();
+
+// Confia no proxy da Vercel para identificar o IP original.
+app.set('trust proxy', 1);
 
 app.use(helmet());
 
@@ -39,24 +40,21 @@ app.use(cors({
 }));
 
 app.use(express.json());
+
 app.use(express.static(path.join(__dirname, '../public')));
 
-// Limita as requisições recebidas pela API.
 app.use('/api', limiteGeral);
 
-// Armazena as sessões no PostgreSQL.
 app.use(session({
     store: new pgSession({
         pool,
         tableName: 'sessoes',
         createTableIfMissing: true
     }),
-
     name: 'cinecatalog.sid',
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
-
     cookie: {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
@@ -68,6 +66,7 @@ app.use(session({
 }));
 
 app.use(authRoutes);
+
 app.use('/api', filmeRoutes);
 app.use('/api', serieRoutes);
 app.use('/api', midiaRoutes);
@@ -79,4 +78,5 @@ app.use('/api', perfilRoutes);
 app.use(rotaNaoEncontrada);
 app.use(trataErro);
 
-module.exports = { app };
+// Exporta diretamente a aplicação Express.
+module.exports = app;

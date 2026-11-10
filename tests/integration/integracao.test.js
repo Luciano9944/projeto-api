@@ -1,7 +1,7 @@
 require('dotenv').config();
 
 const request = require('supertest');
-const { app } = require('../../src/app');
+const app = require('../../src/index');
 const { pool } = require('../../src/config/database');
 
 describe('Testes de Integração', () => {

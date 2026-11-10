@@ -1,5 +1,6 @@
-const API_URL = '/api/admin/catalogo';
-const API_PUBLICA = '/api/catalogo';
+
+const API_URL = `${import.meta.env.VITE_API_URL || '/api'}/admin/catalogo`;
+const API_PUBLICA = `${import.meta.env.VITE_API_URL || '/api'}/catalogo`;
 
 async function requisitar(url, opcoes = {}) {
     let resposta;
