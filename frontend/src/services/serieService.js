@@ -1,5 +1,6 @@
 
-const API_URL = '/api/series';
+const API_URL = `${import.meta.env.VITE_API_URL || '/api'}/series`;
+const API_CATALOGO = `${import.meta.env.VITE_API_URL || '/api'}/catalogo`;
 
 async function requisitar(url) {
     let resposta;
@@ -83,8 +84,7 @@ export async function buscarEquipe(id) {
     return requisitar(`${API_URL}/${id}/equipe`);
 }
 
-const API_CATALOGO = '/api/catalogo';
-
+// Lista as séries cadastradas no catálogo próprio.
 export async function listarSeriesCatalogo() {
     return requisitar(`${API_CATALOGO}?tipo=serie`);
 }

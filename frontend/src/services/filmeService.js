@@ -1,6 +1,6 @@
 
-const API_URL = '/api/filmes';
-const API_CATALOGO = '/api/catalogo';
+const API_URL = `${import.meta.env.VITE_API_URL || '/api'}/filmes`;
+const API_CATALOGO = `${import.meta.env.VITE_API_URL || '/api'}/catalogo`;
 
 async function requisitar(url) {
     let resposta;

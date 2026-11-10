@@ -28,6 +28,9 @@ const {
 
 const app = express();
 
+// Confia no proxy da Vercel para identificar o IP original.
+app.set('trust proxy', 1);
+
 app.use(helmet());
 
 const origemFrontend =
