@@ -4,7 +4,7 @@ const service = require('../services/ComentarioService');
 // Cria um comentário.
 async function criar(req, res, next) {
     try {
-        const { tipo_conteudo, conteudo_id, texto } = req.body;
+        const { tipo_conteudo, conteudo_id, texto } = req.body ?? {};
 
         const comentario = await service.criar(
             req.session.usuario.id,
@@ -61,7 +61,7 @@ async function listarPorUsuario(req, res, next) {
 async function atualizar(req, res, next) {
     try {
         const { id } = req.params;
-        const { texto } = req.body;
+        const { texto } = req.body ?? {};
 
         const comentario = await service.atualizar(
             id,

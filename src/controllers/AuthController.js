@@ -1,11 +1,11 @@
 
 const bcrypt = require('bcryptjs');
-const { pool } = require('../config/database');
+const usuarios = require('../repositories/UsuarioRepository');
 
 // Cadastro de usuário.
 async function cadastrar(req, res, next) {
     try {
-        const { nome, email, senha } = req.body;
+        const { nome, email, senha } = req.body ?? {};
 
         // Validação dos campos.
         if (
@@ -42,12 +42,7 @@ async function cadastrar(req, res, next) {
         }
 
         // Verifica se o e-mail já está cadastrado.
-        const usuarioExistente = await pool.query(
-            'SELECT id FROM usuarios WHERE email = $1',
-            [emailNormalizado]
-        );
-
-        if (usuarioExistente.rowCount > 0) {
+        if (await usuarios.buscarIdPorEmail(emailNormalizado) !== null) {
             return res.status(409).json({
                 erro: 'Este e-mail já está cadastrado.'
             });
@@ -57,16 +52,15 @@ async function cadastrar(req, res, next) {
         const senhaHash = await bcrypt.hash(senha, 12);
 
         // Cria sempre um usuário comum.
-        const resultado = await pool.query(
-            `INSERT INTO usuarios (nome, email, senha_hash, papel)
-             VALUES ($1, $2, $3, 'usuario')
-             RETURNING id, nome, email, papel, criado_em`,
-            [nomeNormalizado, emailNormalizado, senhaHash]
-        );
+        const usuario = await usuarios.cadastrar({
+            nome: nomeNormalizado,
+            email: emailNormalizado,
+            senhaHash
+        });
 
         return res.status(201).json({
             mensagem: 'Usuário cadastrado com sucesso.',
-            usuario: resultado.rows[0]
+            usuario
         });
 
     } catch (erro) {
@@ -85,7 +79,7 @@ async function cadastrar(req, res, next) {
 // Login de usuário.
 async function login(req, res, next) {
     try {
-        const { email, senha } = req.body;
+        const { email, senha } = req.body ?? {};
 
         if (
             typeof email !== 'string' ||
@@ -100,20 +94,13 @@ async function login(req, res, next) {
 
         const emailNormalizado = email.trim().toLowerCase();
 
-        const resultado = await pool.query(
-            `SELECT id, nome, email, senha_hash, papel, ativo
-             FROM usuarios
-             WHERE email = $1`,
-            [emailNormalizado]
-        );
+        const usuario = await usuarios.buscarParaLogin(emailNormalizado);
 
-        if (resultado.rowCount === 0) {
+        if (!usuario) {
             return res.status(401).json({
                 erro: 'E-mail ou senha incorretos.'
             });
         }
-
-        const usuario = resultado.rows[0];
 
         if (!usuario.ativo) {
             return res.status(403).json({

@@ -27,7 +27,5 @@ router.get(
 
 
 router.get('/series/:id', controller.buscarPorId);
-router.get('/series/:id/elenco', controller.buscarElenco);
-router.get('/series/:id/equipe', controller.buscarEquipe);
 
 module.exports = router;

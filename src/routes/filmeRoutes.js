@@ -21,7 +21,5 @@ router.get(
 );
 
 router.get('/filmes/:id', controller.buscarPorId);
-router.get('/filmes/:id/elenco', controller.buscarElenco);
-router.get('/filmes/:id/equipe', controller.buscarEquipe);
 
 module.exports = router;

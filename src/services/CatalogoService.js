@@ -35,6 +35,10 @@ function validarTipo(tipo) {
 }
 
 function validarTmdbId(id) {
+    if (typeof id !== 'number' && (typeof id !== 'string' || !/^\d+$/.test(id.trim()))) {
+        throw criarErro('ID do TMDB inválido.');
+    }
+
     const numero = Number(id);
 
     if (
@@ -227,10 +231,18 @@ async function buscarPorId(id) {
 async function cadastrar(dados, usuarioId) {
     const conteudo = validarDados(dados);
 
-    return repository.cadastrar({
-        ...conteudo,
-        criado_por: usuarioId
-    });
+    try {
+        return await repository.cadastrar({
+            ...conteudo,
+            criado_por: usuarioId
+        });
+    } catch (erro) {
+        if (erro.code === '23505' && erro.constraint === 'conteudo_tmdb_unico') {
+            throw criarErro('Este título já está registrado no catálogo.', 409);
+        }
+
+        throw erro;
+    }
 }
 
 async function atualizar(id, dados) {

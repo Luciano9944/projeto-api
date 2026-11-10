@@ -18,6 +18,4 @@ router.get('/api/perfil', exigeLogin, controller.perfil);
 // Encerramento da sessão.
 router.post('/api/logout', exigeLogin, controller.logout);
 
-const exigeAdmin = require('../middlewares/exigeAdmin');
-
 module.exports = router;

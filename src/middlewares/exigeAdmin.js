@@ -1,5 +1,5 @@
 
-const { pool } = require('../config/database');
+const usuarios = require('../repositories/UsuarioRepository');
 
 async function exigeAdmin(req, res, next) {
     try {
@@ -13,22 +13,15 @@ async function exigeAdmin(req, res, next) {
         const usuarioId = req.session.usuario.id;
 
         // Consulta as permissões atuais no banco.
-        const resultado = await pool.query(
-            `SELECT papel, ativo
-             FROM usuarios
-             WHERE id = $1`,
-            [usuarioId]
-        );
+        const usuario = await usuarios.buscarPermissoes(usuarioId);
 
-        if (resultado.rowCount === 0 || !resultado.rows[0].ativo) {
+        if (!usuario || !usuario.ativo) {
             return req.session.destroy(() => {
                 res.status(401).json({
                     erro: 'Usuário não encontrado ou conta desativada.'
                 });
             });
         }
-
-        const usuario = resultado.rows[0];
 
         // Verifica se o usuário possui papel administrativo.
         if (usuario.papel !== 'admin') {

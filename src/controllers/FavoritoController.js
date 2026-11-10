@@ -4,7 +4,7 @@ const service = require('../services/FavoritoService');
 // Adiciona um favorito.
 async function adicionar(req, res, next) {
     try {
-        const { tipo_conteudo, conteudo_id } = req.body;
+        const { tipo_conteudo, conteudo_id } = req.body ?? {};
 
         const resultado = await service.adicionar(
             req.session.usuario.id,

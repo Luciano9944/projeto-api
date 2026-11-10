@@ -6,19 +6,16 @@ const exigeLogin = require('../middlewares/exigeLogin');
 
 const router = express.Router();
 
-// Todas as rotas exigem autenticação.
-router.use(exigeLogin);
-
 // Adiciona um conteúdo aos favoritos.
-router.post('/favoritos', controller.adicionar);
+router.post('/favoritos', exigeLogin, controller.adicionar);
 
 // Lista os favoritos do usuário autenticado.
-router.get('/favoritos', controller.listar);
+router.get('/favoritos', exigeLogin, controller.listar);
 
 // Verifica se um conteúdo está favoritado.
-router.get('/favoritos/:tipo/:conteudoId', controller.verificar);
+router.get('/favoritos/:tipo/:conteudoId', exigeLogin, controller.verificar);
 
 // Remove um conteúdo dos favoritos.
-router.delete('/favoritos/:tipo/:conteudoId', controller.remover);
+router.delete('/favoritos/:tipo/:conteudoId', exigeLogin, controller.remover);
 
 module.exports = router;
