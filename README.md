@@ -176,3 +176,5 @@ npm test --prefix frontend
 ~~~
 
 Com frontend e backend locais ligados, `npm run test:e2e:open` abre o Cypress. As evidências da disciplina de testes são mantidas separadas da apresentação de Programação para Web Avançada.
+
+A suíte de integração de contas exige permissão de tabelas temporárias no PostgreSQL. Ela testa cliente, administrador e CRUD dentro de uma transação revertida ao final. Veja o [relatório de VV&TS](evidencias-vvt/RELATORIO_VVT.md) e os [casos de teste](evidencias-vvt/CASOS_VVT.md) para os cenários e comandos.

@@ -1,100 +1,95 @@
-# Relatório de Verificação, Validação e Teste de Software (VV&T) — CineCatalog API
+# Relatório de testes do CineMarvel
 
+## Objetivo, escopo e estratégia
 
-## 1. Estrutura da Suíte de Testes e Automação (Itens 1, 2, 3, 4 e 5)
+Verificar o comportamento do catálogo e das contas do Projeto Web Final. A rodada avalia busca, detalhes, temporadas, formulários, navegação móvel, autenticação, autorização e CRUD de títulos. A [especificação dos 57 casos](CASOS_VVT.md) liga cada teste à funcionalidade, aos dados, ao aceite e ao código que o executa.
 
-A automação foi implementada utilizando **Jest** e **Supertest** (`npm test`), organizada nas seguintes pastas:
+- **Unitário:** Jest isola serviços, middlewares e o cliente TMDB. O Node Test Runner executa os utilitários de navegação do React.
+- **Funcional e API:** partição de equivalência para tipo de conteúdo e análise de valor-limite para nota média. O Supertest confere status e corpo JSON em cenários HTTP de sucesso e erro.
+- **Integração:** Express e PostgreSQL reais. A suíte de contas usa uma conexão reservada, tabelas temporárias e `search_path` restrito a `pg_temp`. Ela cria usuários fictícios, guarda sessões reais e testa o CRUD. Um `ROLLBACK` encerra a rodada sem gravar nas tabelas compartilhadas.
+- **Ponta a ponta:** Cypress em navegador usa o React, a API Express e as integrações reais de leitura. As interceptações observam as respostas e retiram cabeçalhos condicionais de cache.
 
-| Item do Trabalho | Pasta / Arquivo | Escopo Testado | Total de Casos | Status |
-| :--- | :--- | :--- | :---: | :---: |
-| **1. Teste Unitário** | `tests/unit/catalogoService.test.js`<br>`tests/unit/middlewares.test.js` | Regras isoladas do `CatalogoService` (com mocks de repositório/TMDB) e middlewares `exigeLogin` e `rotaNaoEncontrada` | 5 | PASS |
-| **2. Teste de Integração** | `tests/integration/integracao.test.js` | Integração real entre Express (`app.js`), Rotas, Middlewares, Controllers, Services e Banco PostgreSQL | 3 | PASS |
-| **3. Teste Funcional (Caixa-Preta)** | `tests/functional/caixaPreta.test.js` | Partição de Equivalência (`tipo_conteudo`) e Análise de Valor Limite (`nota_media` de `0` a `10`) | 6 | PASS |
-| **4. Teste de API REST** | `tests/api/rotasApi.test.js` | Endpoints REST (`/api/login`, `/api/cadastro`, `/api/perfil`, `/api/filmes/buscar`, erro `404` e JSON inválido) | 5 | PASS |
-| **5. Automação** | Todas as suítes (`npm test`) | Execução automatizada de todos os fluxos via Jest + Supertest | **19** | **100% PASS** |
+**Entrada.** Dependências instaladas, variáveis configuradas em `.env`, PostgreSQL acessível com permissão para criar tabelas temporárias e TMDB respondendo. Para o Cypress, confirmar Vite e API locais e HTTP 200 na consulta do catálogo.
 
----
+**Saída.** Executar as baterias planejadas, registrar o status de cada caso e repetir os testes após correções. A rodada fecha com os casos críticos de sessão e CRUD aprovados e cada reprovação explicada com evidência e situação.
 
-## 2. Casos de Teste Funcional — Caixa-Preta (Item 3)
+## Ambiente e reprodução
 
+Execução local em **10/11/2026**, aplicação na revisão `30eb9d1` com a nova suíte e esta documentação no diretório de trabalho. Windows, Node.js 24.19.0, Jest 29, Cypress 16.2.1 com Electron 146 em modo headless, Express na porta 3000 e Vite na porta 5174. PostgreSQL no Neon e API TMDB reais para os fluxos aplicáveis.
 
-| ID | Funcionalidade / Campo | Técnica | Entrada Testada | Resultado Esperado | Resultado Obtido | Status |
-| :- | :--- | :--- | :--- | :--- | :--- | :---: |
-| CT-01 | `tipo_conteudo` (`'filme'` \| `'serie'`) | Partição Válida (PE) | `'serie'` | Aceita o cadastro com `tipo_conteudo = 'serie'` | Aceitou (`'serie'`) | PASS |
-| CT-02 | `tipo_conteudo` (`'filme'` \| `'serie'`) | Partição Inválida (PE) | `'novela'` | Rejeita com erro `O tipo de conteúdo deve ser filme ou serie.` | Rejeitou com erro esperado | PASS |
-| CT-03 | `nota_media` (`0` a `10`) | Valor Limite Inferior Inválido (AVL) | `-0.1` | Rejeita com erro `A nota média deve estar entre 0 e 10.` | Rejeitou com erro esperado | PASS |
-| CT-04 | `nota_media` (`0` a `10`) | Valor Limite Inferior Válido (AVL) | `0` | Aceita nota `0` | Aceitou (`0`) | PASS |
-| CT-05 | `nota_media` (`0` a `10`) | Valor Limite Superior Válido (AVL) | `10` | Aceita nota `10` | Aceitou (`10`) | PASS |
-| CT-06 | `nota_media` (`0` a `10`) | Valor Limite Superior Inválido (AVL) | `10.1` | Rejeita com erro `A nota média deve estar entre 0 e 10.` | Rejeitou com erro esperado | PASS |
+Na raiz, após a [instalação do projeto](../README.md#instalação-e-execução-local):
 
----
+~~~powershell
+npm test -- --runInBand
+npm test --prefix frontend
+npm run test:coverage -- --runInBand
+~~~
 
-## 3. Evidências de Execução do Framework (Item 7)
+Para o Cypress, deixe os dois primeiros comandos em terminais separados e use um terceiro para executar os testes:
 
-Saída registrada na execução de `npm test` (`jest --verbose`):
+~~~powershell
+npm start
+npm run dev --prefix frontend -- --host 127.0.0.1 --port 5174 --strictPort
+npm run test:e2e -- --browser electron --config baseUrl=http://127.0.0.1:5174
+~~~
 
-```text
- PASS  tests/unit/middlewares.test.js
-  Testes Unitários dos Middlewares
-    √ exigeLogin deve retornar 401 quando não houver usuário na sessão (11 ms)
-    √ exigeLogin deve chamar next() quando houver usuário autenticado na sessão (1 ms)
-    √ rotaNaoEncontrada deve criar erro 404 e enviar para o next
+Para a demonstração interativa, use `npm run test:e2e:open -- --config baseUrl=http://127.0.0.1:5174`. Se o pacote Cypress estiver instalado sem o binário, execute `npx cypress install`.
 
- PASS  tests/functional/caixaPreta.test.js
-  Testes Funcionais (Caixa-Preta: Partição de Equivalência e Valor Limite)
-    √ Partição Válida: deve aceitar tipo_conteudo "serie" (12 ms)
-    √ Partição Inválida: deve rejeitar tipo_conteudo "novela" (16 ms)
-    √ Valor Limite Inferior Inválido: deve rejeitar nota -0.1 (2 ms)
-    √ Valor Limite Inferior Válido: deve aceitar nota 0
-    √ Valor Limite Superior Válido: deve aceitar nota 10 (1 ms)
-    √ Valor Limite Superior Inválido: deve rejeitar nota 10.1 (1 ms)
+## Execução e regressão
 
- PASS  tests/unit/catalogoService.test.js
-  Testes do CatalogoService
-    √ aceitar filme válido (12 ms)
-    √ rejeitar filme com URL completa no poster_path (15 ms)
+| Bateria | Casos | Executados | Aprovados | Reprovados |
+| --- | --- | ---: | ---: | ---: |
+| Jest, unitários | UT-01 a UT-12 | 12 | 12 | 0 |
+| Jest, integração | INT-01 a INT-10 | 10 | 10 | 0 |
+| Jest, caixa-preta | CT-01 a CT-06 | 6 | 6 | 0 |
+| Jest, API | API-01 a API-05 | 5 | 5 | 0 |
+| Node Test Runner | FE-01 a FE-05 | 5 | 5 | 0 |
+| Cypress | E2E-01 a E2E-19 | 19 | 19 | 0 |
+| **Total** | | **57** | **57** | **0** |
 
- PASS  tests/api/rotasApi.test.js
-  Testes de API REST (Endpoints, Status Codes e Erros)
-    √ GET /api/rota-inexistente deve retornar 404 (Rota não encontrada) (36 ms)
-    √ POST /api/login com JSON malformado deve retornar 400 (28 ms)
-    √ GET /api/perfil sem estar logado deve retornar 401 (3 ms)
-    √ GET /api/filmes/buscar sem informar o nome do filme deve retornar 400 (8 ms)
-    √ POST /api/cadastro com senha menor que 8 caracteres deve retornar 400 (3 ms)
+Trechos da rodada final. Os casos INT-04 a INT-10 são a nova bateria de regressão de autenticação, autorização e catálogo.
 
- PASS  tests/integration/integracao.test.js
-  Testes de Integração (Express + Rotas + Controller + Service + PostgreSQL)
-    √ Integração Banco + API: GET /api/catalogo deve buscar os itens ativos no PostgreSQL (346 ms)
-    √ Integração Controller + Service + TrataErro: GET /api/catalogo?tipo=invalido deve retornar 400 (10 ms)
-    √ Integração Rotas + Middleware exigeLogin: POST /api/admin/catalogo sem sessão deve bloquear com 401 (17 ms)
+~~~text
+PASS tests/integration/contasCatalogo.test.js
+  INT-04 cadastro público mantém o papel cliente
+  INT-05 cliente entra e consulta o próprio perfil com o cookie
+  INT-06 cliente autenticado recebe 403 nas três operações administrativas
+  INT-07 administrador entra e mantém o papel no perfil
+  INT-08 administrador cadastra, consulta, edita e desativa um item do catálogo
+  INT-09 logout invalida a sessão do cliente
+  INT-10 administrador recebe 400 para ID TMDB booleano
 
-Test Suites: 5 passed, 5 total
-Tests:       19 passed, 19 total
-Snapshots:   0 total
-Time:        1.945 s
-Ran all test suites.
-```
+Test Suites: 7 passed, 7 total
+Tests:       33 passed, 33 total
 
----
+Node Test Runner: tests 5 | pass 5 | fail 0
 
-## 4. Registro de Defeitos Encontrados (Item 8)
+Cypress
+01-filmes.cy.js          5 aprovados
+02-series.cy.js          4 aprovados
+03-formularios.cy.js     6 aprovados
+04-navegacao.cy.js       4 aprovados
+All specs passed!       19 aprovados
+~~~
 
-| ID | Descrição | Condição de Ocorrência | Resultado Esperado | Resultado Obtido | Evidência | Situação após Correção |
-| :- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **DEF-01** | Arquivo de variáveis de ambiente nomeado incorretamente como `env` sem o ponto inicial | Ao iniciar o servidor com `npm start` | Carregar as variáveis `SESSION_SECRET`, `TMDB_BEARER_TOKEN` e `DATABASE_URL_POOLED` do arquivo `.env` | `dotenv` injetou 0 variáveis e o servidor encerrou com erro de variáveis obrigatórias ausentes | Log do terminal: `Erro: variáveis de ambiente obrigatórias ausentes` | **Corrigido** (arquivo renomeado para `.env` e validado na inicialização e nos testes) |
-| **DEF-02** | `validarTmdbId` em `src/services/CatalogoService.js` aceita valor booleano `true` devido à coerção `Number(true) === 1` | Ao chamar `CatalogoService.cadastrar` passando `tmdb_id: true` | Lançar erro `400` (`ID do TMDB inválido.`) | O valor booleano `true` é convertido para o número inteiro `1` e aceito na validação | Inspeção estática e análise sobre `CatalogoService.js` (linhas 37–48) | **Identificado / Documentado** (recomenda-se validar `/^\d+$/` assim como em `validarId`) |
-| **DEF-03** | Rotas de elenco e equipe declaradas em duplicidade em `src/routes/filmeRoutes.js` | Registro das rotas `/filmes/:id/elenco` e `/filmes/:id/equipe` nas linhas 13–21 e novamente nas linhas 24–25 | Cada endpoint deve ser registrado apenas uma vez no roteador do Express | Duplicidade de declaração de rotas no mesmo arquivo | Inspeção do arquivo `src/routes/filmeRoutes.js` | **Identificado / Documentado** |
-| **DEF-04** | Página estática legada (`public/index.html`) aponta para rota inexistente `POST /login` com `access_token` | Ao tentar autenticar pela interface estática servida em `http://localhost:3000` | Autenticar na API ou utilizar a rota atual `POST /api/login` com `email` e `senha` | Retorna `404 Rota não encontrada: POST /login` | Teste de navegação e log do middleware `rotaNaoEncontrada` | **Resolvido pelo uso do frontend React (`frontend/` na porta `5173`) integrado às rotas `/api/*`** |
+Na primeira execução da nova suíte, o INT-05 falhou porque a asserção copiava `criado_em` da resposta de cadastro para a expectativa do perfil. O perfil devolveu os quatro campos de identidade documentados. A asserção passou a conferir ID, nome, e-mail e papel. A nova rodada aprovou o caso sem alteração no código da aplicação.
 
----
+## Registro de defeitos
 
-## 5. Testes de Regressão (Item 6)
+| ID | Condição e descrição | Esperado | Obtido antes | Evidência | Situação |
+| --- | --- | --- | --- | --- | --- |
+| DEF-01 | Inicialização com arquivo de ambiente não carregado | Variáveis lidas e servidor iniciado | Processo encerrou por variáveis obrigatórias ausentes | Histórico de `npm start` e mensagem do dotenv | Ambiente local corrigido. A inicialização passou na rodada atual |
+| DEF-02 | Cadastro com `tmdb_id: true` | 400, ID inválido | Booleano convertido em 1 e aceito | Reprodução com repositório simulado em `d30e229` e `30eb9d1`. INT-10 repetiu o cenário pela API real | Corrigido. Regressão aprovada |
+| DEF-03 | Carregamento das rotas de créditos de filmes | Um registro por rota de elenco e equipe | Cada rota estava declarada duas vezes | Comparação de `src/routes/filmeRoutes.js` antes e após `f2dd7a9` | Duplicatas removidas |
+| DEF-04 | Login pela antiga página estática | Autenticação por `POST /api/login` | A página chamava `POST /login` e recebia 404 | Histórico da página e remoção de `public/index.html` no Git | Página legada removida. Login e formulários são testados pela API e pelo React |
+| DEF-05 | Rota desconhecida sem cookie | 404 com erro em JSON | 401 por middleware de favoritos aplicado a todas as rotas | Resposta da versão anterior e API-01 no Jest | Corrigido no código testado localmente. A confirmação desta revisão na Vercel é separada |
 
-| Suíte Executada na Regressão | Casos Executados | Resultado Obtido | Regressão Detectada? |
-| :--- | :---: | :---: | :---: |
-| `tests/unit/catalogoService.test.js` | 2 | 2 Passaram (`PASS`) | Não |
-| `tests/unit/middlewares.test.js` | 3 | 3 Passaram (`PASS`) | Não |
-| `tests/functional/caixaPreta.test.js` | 6 | 6 Passaram (`PASS`) | Não |
-| `tests/api/rotasApi.test.js` | 5 | 5 Passaram (`PASS`) | Não |
-| `tests/integration/integracao.test.js` | 3 | 3 Passaram (`PASS`) | Não |
-| **Total da Bateria de Regressão** | **19** | **19 Passaram (100%)** | **Nenhuma** |
+## Cobertura e limites
+
+O Jest mediu **36,47% de linhas** (399/1094) e **21,58% de ramos** (142/658) nos arquivos instrumentados do backend. A rodada anterior media 29,25% e 14,74%, respectivamente. O ganho corresponde à execução de caminhos reais de autenticação, permissão e catálogo.
+
+O CRUD foi comprovado pela API. O Cypress cobre busca, formulários e acesso de visitante. A automação de navegador ainda não inclui o painel admin com sessão, comentários, favoritos autenticados ou reprodução de mídia. Os testes de frontend e Cypress ficam fora da instrumentação do Jest. Os pontos de cobertura mais baixa incluem essas operações e as falhas de serviços externos. Não há workflow de CI na revisão inspecionada.
+
+## Demonstração
+
+No Cypress interativo, abra `04-navegacao.cy.js` e mostre a busca de Os Simpsons em tela móvel. Em outro terminal, execute `npm test -- --runInBand contasCatalogo` para apresentar os casos de sessão, autorização e CRUD com dados temporários. Explique por que 403 bloqueia o cliente, enquanto a remoção pelo administrador é lógica e resulta em 404 nas consultas públicas.
